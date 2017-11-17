@@ -32,12 +32,15 @@
 #include <stdlib.h>
 #include "adlist.h"
 #include "zmalloc.h"
-
+/*一个通用的双链表实现*/
 /* Create a new list. The created list can be freed with
  * AlFreeList(), but private value of every node need to be freed
  * by the user before to call AlFreeList().
  *
  * On error, NULL is returned. Otherwise the pointer to the new list. */
+/* 创建一个新的list,创建的list可以通过AlFreeList()释放,
+ * 但私人每个节点的值需要被释放在用户调用AlFreeList()之前。
+ * 如果出错返回NULL ,否则返回指向新list的指针*/
 list *listCreate(void)
 {
     struct list *list;
@@ -54,7 +57,9 @@ list *listCreate(void)
 
 /* Free the whole list.
  *
- * This function can't fail. */
+ * This function can't fail.
+ * 释放整个list,该方法不能失败
+ * */
 void listRelease(list *list)
 {
     unsigned long len;
@@ -64,7 +69,7 @@ void listRelease(list *list)
     len = list->len;
     while(len--) {
         next = current->next;
-        if (list->free) list->free(current->value);
+        if (list->free) list->free(current->value);//释放值
         zfree(current);
         current = next;
     }
@@ -76,7 +81,12 @@ void listRelease(list *list)
  *
  * On error, NULL is returned and no operation is performed (i.e. the
  * list remains unaltered).
- * On success the 'list' pointer you pass to the function is returned. */
+ * On success the 'list' pointer you pass to the function is returned.
+ *
+ * 添加一个新节点到list,位置为list头部,保存指定的值的地址
+ * 如果出错返回null,不执行任何操作。 (list保持不变。)
+ * 如果成功返回提供的list的指针
+ * */
 list *listAddNodeHead(list *list, void *value)
 {
     listNode *node;
@@ -102,7 +112,11 @@ list *listAddNodeHead(list *list, void *value)
  *
  * On error, NULL is returned and no operation is performed (i.e. the
  * list remains unaltered).
- * On success the 'list' pointer you pass to the function is returned. */
+ * On success the 'list' pointer you pass to the function is returned.
+ *
+ * 添加一个新节点到list,位置为list尾部,保存指定的值的地址
+ * 如果出错返回null,不执行任何操作。 (list保持不变。)
+ * 如果成功返回提供的list的指针*/
 list *listAddNodeTail(list *list, void *value)
 {
     listNode *node;
@@ -123,6 +137,7 @@ list *listAddNodeTail(list *list, void *value)
     return list;
 }
 
+/*在list的摸个节点处前或后添加新节点*/
 list *listInsertNode(list *list, listNode *old_node, void *value, int after) {
     listNode *node;
 
@@ -155,7 +170,9 @@ list *listInsertNode(list *list, listNode *old_node, void *value, int after) {
 /* Remove the specified node from the specified list.
  * It's up to the caller to free the private value of the node.
  *
- * This function can't fail. */
+ * This function can't fail.
+ *
+ * 从list删除指定节点 ,由调用者来释放节点的私有值。方法不能失败*/
 void listDelNode(list *list, listNode *node)
 {
     if (node->prev)
@@ -174,7 +191,10 @@ void listDelNode(list *list, listNode *node)
 /* Returns a list iterator 'iter'. After the initialization every
  * call to listNext() will return the next element of the list.
  *
- * This function can't fail. */
+ * This function can't fail.
+ *
+ * 返回一个list的迭代器,初始化后每次调用listNext()将返回列表中的下一个元素。
+ * */
 listIter *listGetIterator(list *list, int direction)
 {
     listIter *iter;
@@ -188,17 +208,21 @@ listIter *listGetIterator(list *list, int direction)
     return iter;
 }
 
-/* Release the iterator memory */
+/* Release the iterator memory
+ *
+ * 是否迭代器内存*/
 void listReleaseIterator(listIter *iter) {
     zfree(iter);
 }
 
-/* Create an iterator in the list private iterator structure */
+/* Create an iterator in the list private iterator structure
+ *
+ * 将迭代器重新初始化,从列头开始*/
 void listRewind(list *list, listIter *li) {
     li->next = list->head;
     li->direction = AL_START_HEAD;
 }
-
+/* 将迭代器重新初始化,从列尾开始*/
 void listRewindTail(list *list, listIter *li) {
     li->next = list->tail;
     li->direction = AL_START_TAIL;
@@ -216,6 +240,8 @@ void listRewindTail(list *list, listIter *li) {
  * while ((node = listNext(iter)) != NULL) {
  *     doSomethingWith(listNodeValue(node));
  * }
+ *
+ * 返回迭代器的下一个元素,把当前返回的元素使用listdelnode()是有效的，但不排除其他因素。
  *
  * */
 listNode *listNext(listIter *iter)
@@ -238,7 +264,12 @@ listNode *listNext(listIter *iter)
  * to copy the node value. Otherwise the same pointer value of
  * the original node is used as value of the copied node.
  *
- * The original list both on success or error is never modified. */
+ * The original list both on success or error is never modified.
+ *
+ * 复制整个列表 ,如果内存失败返回null,成功就返回原始list的复制list
+ * 'Dup'通过listSetDupMethod()方法来复制节点值,否则复制的节点的值的指针会和原节点的值的指针是一个
+ * 原始list无论成功与否都不会被修改
+ *  */
 list *listDup(list *orig)
 {
     list *copy;
@@ -278,7 +309,11 @@ list *listDup(list *orig)
  *
  * On success the first matching node pointer is returned
  * (search starts from head). If no matching node exists
- * NULL is returned. */
+ * NULL is returned.
+ *
+ * 根据给定key搜索list获取节点,通过match方法来匹配,如果没有设置match方法,则通过比较key的指针
+ * 从list头开始搜索,返回第一个符合条件的节点,如果没有符合的返回NULL
+ * */
 listNode *listSearchKey(list *list, void *key)
 {
     listIter iter;

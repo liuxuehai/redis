@@ -30,8 +30,9 @@
 
 #ifndef __ADLIST_H__
 #define __ADLIST_H__
-
+/*一个通用的双链表实现*/
 /* Node, List, and Iterator are the only data structures used currently. */
+/*节点、列表和Iterator是当前使用的唯一数据结构。  双向链表*/
 
 typedef struct listNode {
     struct listNode *prev;
@@ -54,6 +55,7 @@ typedef struct list {
 } list;
 
 /* Functions implemented as macros */
+/*作为宏实现的函数*/
 #define listLength(l) ((l)->len)
 #define listFirst(l) ((l)->head)
 #define listLast(l) ((l)->tail)
@@ -70,6 +72,7 @@ typedef struct list {
 #define listGetMatchMethod(l) ((l)->match)
 
 /* Prototypes */
+/*属性*/
 list *listCreate(void);
 void listRelease(list *list);
 list *listAddNodeHead(list *list, void *value);
@@ -87,6 +90,7 @@ void listRewindTail(list *list, listIter *li);
 void listRotate(list *list);
 
 /* Directions for iterators */
+/*迭代器的方向*/
 #define AL_START_HEAD 0
 #define AL_START_TAIL 1
 
