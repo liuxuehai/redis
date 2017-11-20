@@ -32,24 +32,27 @@
 
 /* -----------------------------------------------------------------------------
  * Helpers and low level bit functions.
+ * 助手和低位函数。
  * -------------------------------------------------------------------------- */
 
 /* Count number of bits set in the binary array pointed by 's' and long
  * 'count' bytes. The implementation of this function is required to
- * work with a input string length up to 512 MB. */
+ * work with a input string length up to 512 MB.
+ *
+ * 计算由's'和'count'字节指向的二进制数组中设置的位数。该函数的实现要求输入字符串长度高达512 MB。*/
 size_t redisPopcount(void *s, long count) {
     size_t bits = 0;
     unsigned char *p = s;
     uint32_t *p4;
     static const unsigned char bitsinbyte[256] = {0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8};
 
-    /* Count initial bytes not aligned to 32 bit. */
+    /* Count initial bytes not aligned to 32 bit.  计算未对齐到32位的初始字节*/
     while((unsigned long)p & 3 && count) {
         bits += bitsinbyte[*p++];
         count--;
     }
 
-    /* Count bits 28 bytes at a time */
+    /* Count bits 28 bytes at a time 计数位28字节一次。*/
     p4 = (uint32_t*)p;
     while(count>=28) {
         uint32_t aux1, aux2, aux3, aux4, aux5, aux6, aux7;
@@ -85,7 +88,7 @@ size_t redisPopcount(void *s, long count) {
                     ((aux6 + (aux6 >> 4)) & 0x0F0F0F0F) +
                     ((aux7 + (aux7 >> 4)) & 0x0F0F0F0F))* 0x01010101) >> 24;
     }
-    /* Count the remaining bytes. */
+    /* Count the remaining bytes. 计算剩余字节数*/
     p = (unsigned char*)p4;
     while(count--) bits += bitsinbyte[*p++];
     return bits;
@@ -97,12 +100,15 @@ size_t redisPopcount(void *s, long count) {
  * The function is guaranteed to return a value >= 0 if 'bit' is 0 since if
  * no zero bit is found, it returns count*8 assuming the string is zero
  * padded on the right. However if 'bit' is 1 it is possible that there is
- * not a single set bit in the bitmap. In this special case -1 is returned. */
+ * not a single set bit in the bitmap. In this special case -1 is returned.
+ *
+ * 将第一个位集的位置返回到位图中的一个位置（如果位为1）或0（如果“位”为0），则从's' 和'count'计数字节开始。
+ * 如果没有找到零位，则函数保证返回值“= 0”，如果“位”为0， */
 long redisBitpos(void *s, unsigned long count, int bit) {
     unsigned long *l;
     unsigned char *c;
     unsigned long skipval, word = 0, one;
-    long pos = 0; /* Position of bit, to return to the caller. */
+    long pos = 0; /* Position of bit, to return to the caller.  位的位置，返回给调用者。*/
     unsigned long j;
 
     /* Process whole words first, seeking for first word that is not

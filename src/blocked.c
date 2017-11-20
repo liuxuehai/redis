@@ -72,7 +72,9 @@
  *
  * Note that if the timeout is zero (usually from the point of view of
  * commands API this means no timeout) the value stored into 'timeout'
- * is zero. */
+ * is zero.
+ * 从对象获取超时值并将其存储到'timeout'。最后的超时总是作为超时的毫秒时间存储，但是解析是根据可能是秒或毫秒的'unit'执行的。
+ * 请注意，如果超时为零（通常从命令API的角度来看，这意味着没有超时）存储在'timeout'中的值为零。*/
 int getTimeoutFromObjectOrReply(client *c, robj *object, mstime_t *timeout, int unit) {
     long long tval;
 
@@ -96,7 +98,8 @@ int getTimeoutFromObjectOrReply(client *c, robj *object, mstime_t *timeout, int 
 
 /* Block a client for the specific operation type. Once the CLIENT_BLOCKED
  * flag is set client query buffer is not longer processed, but accumulated,
- * and will be processed when the client is unblocked. */
+ * and will be processed when the client is unblocked.
+ * 为特定的操作类型阻塞客户机,一旦CLIENT_BLOCKED标志设置客户端查询缓冲区不再处理，但积累起来，当解锁时就会处理。*/
 void blockClient(client *c, int btype) {
     c->flags |= CLIENT_BLOCKED;
     c->btype = btype;
@@ -105,7 +108,8 @@ void blockClient(client *c, int btype) {
 
 /* This function is called in the beforeSleep() function of the event loop
  * in order to process the pending input buffer of clients that were
- * unblocked after a blocking operation. */
+ * unblocked after a blocking operation.
+ * 调用此函数以在事件循环的beforeSleep()函数来处理未决的输入缓冲区后，解除阻塞操作客户。*/
 void processUnblockedClients(void) {
     listNode *ln;
     client *c;
@@ -120,7 +124,9 @@ void processUnblockedClients(void) {
         /* Process remaining data in the input buffer, unless the client
          * is blocked again. Actually processInputBuffer() checks that the
          * client is not blocked before to proceed, but things may change and
-         * the code is conceptually more correct this way. */
+         * the code is conceptually more correct this way.
+         * 处理输入缓冲区中的剩余数据，除非客户端再次被阻塞。
+         * 其实processinputbuffer()检查客户不阻塞在继续处理之前，但情况可能有变化，代码是概念更正确的方式。*/
         if (!(c->flags & CLIENT_BLOCKED)) {
             if (c->querybuf && sdslen(c->querybuf) > 0) {
                 processInputBuffer(c);
@@ -130,7 +136,9 @@ void processUnblockedClients(void) {
 }
 
 /* Unblock a client calling the right function depending on the kind
- * of operation the client is blocking for. */
+ * of operation the client is blocking for.
+ *
+ * 打开客户端调用正确的函数依赖类操作客户端阻塞。*/
 void unblockClient(client *c) {
     if (c->btype == BLOCKED_LIST) {
         unblockClientWaitingData(c);
@@ -140,12 +148,14 @@ void unblockClient(client *c) {
         serverPanic("Unknown btype in unblockClient().");
     }
     /* Clear the flags, and put the client in the unblocked list so that
-     * we'll process new commands in its query buffer ASAP. */
+     * we'll process new commands in its query buffer ASAP.
+     * 清除标记，并将客户机放在无阻塞列表中，以便我们在其查询缓冲区中尽快处理新命令。 */
     c->flags &= ~CLIENT_BLOCKED;
     c->btype = BLOCKED_NONE;
     server.bpop_blocked_clients--;
     /* The client may already be into the unblocked list because of a previous
-     * blocking operation, don't add back it into the list multiple times. */
+     * blocking operation, don't add back it into the list multiple times.
+     * 由于前面的阻塞操作，客户端可能已经进入了不阻塞列表，不要多次将它添加到列表中。*/
     if (!(c->flags & CLIENT_UNBLOCKED)) {
         c->flags |= CLIENT_UNBLOCKED;
         listAddNodeTail(server.unblocked_clients,c);
@@ -153,7 +163,8 @@ void unblockClient(client *c) {
 }
 
 /* This function gets called when a blocked client timed out in order to
- * send it a reply of some kind. */
+ * send it a reply of some kind.
+ * 当阻塞的客户端超时以发送某种回复时，这个函数就会被调用。*/
 void replyToBlockedClientTimedOut(client *c) {
     if (c->btype == BLOCKED_LIST) {
         addReply(c,shared.nullmultibulk);
@@ -170,7 +181,11 @@ void replyToBlockedClientTimedOut(client *c) {
  * is called when a master turns into a slave.
  *
  * The semantics is to send an -UNBLOCKED error to the client, disconnecting
- * it at the same time. */
+ * it at the same time.
+ *
+ * 因为有了大规模解除客户的实例，使阻塞不再安全
+ * 例如，在一个从主到从的实例中，在列表操作中被阻塞的客户是不安全的，所以当主变成一个奴隶时调用这个函数。
+ * 语义是向客户端发送一个不阻塞的错误，同时断开它。*/
 void disconnectAllBlockedClients(void) {
     listNode *ln;
     listIter li;

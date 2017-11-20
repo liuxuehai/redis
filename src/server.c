@@ -2528,7 +2528,8 @@ int processCommand(client *c) {
 /*================================== Shutdown =============================== */
 
 /* Close listening sockets. Also unlink the unix domain socket if
- * unlink_unix_socket is non-zero. */
+ * unlink_unix_socket is non-zero.
+ * 停止监听socke,同时断开，如果是非零unlink_unix_socket UNIX域套接字*/
 void closeListeningSockets(int unlink_unix_socket) {
     int j;
 

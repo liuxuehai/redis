@@ -44,7 +44,8 @@
 
 /* A global reference to myself is handy to make code more clear.
  * Myself always points to server.cluster->myself, that is, the clusterNode
- * that represents this node. */
+ * that represents this node.
+ * 对自己的全局引用有助于代码更加清晰。我总是指向服务器集群->自己，即表示此节点的clusternode。 */
 clusterNode *myself = NULL;
 
 clusterNode *createClusterNode(char *nodename, int flags);
