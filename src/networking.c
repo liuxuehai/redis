@@ -555,7 +555,7 @@ void addReplyBulkLen(client *c, robj *obj) {
         addReplyLongLongWithPrefix(c,len,'$');
 }
 
-/* Add a Redis Object as a bulk reply */
+/* Add a Redis Object as a bulk reply 添加一个redis对象作为一个批量回复 */
 void addReplyBulk(client *c, robj *obj) {
     addReplyBulkLen(c,obj);
     addReply(c,obj);

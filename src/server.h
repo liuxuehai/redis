@@ -790,7 +790,7 @@ struct redisServer {
     int tcpkeepalive;               /* Set SO_KEEPALIVE if non-zero. */
     int active_expire_enabled;      /* Can be disabled for testing purposes. */
     size_t client_max_querybuf_len; /* Limit for client query buffer length */
-    int dbnum;                      /* Total number of configured DBs 配置的DBS总数 */
+    int dbnum;                      /* Total number of configured DBs 配置的DBs总数 */
     int supervised;                 /* 1 if supervised, 0 otherwise. */
     int supervised_mode;            /* See SUPERVISED_* */
     int daemonize;                  /* True if running as a daemon */
@@ -831,11 +831,11 @@ struct redisServer {
     int aof_stop_sending_diff;     /* If true stop sending accumulated diffs
                                       to child process. 如果真的,就停止送积累的差异给子节点处理*/
     sds aof_child_diff;             /* AOF diff accumulator child side. */
-    /* RDB persistence */
-    long long dirty;                /* Changes to DB from the last save */
+    /* RDB persistence  RDB持久化*/
+    long long dirty;                /* Changes to DB from the last save  从上次保存到db的更改*/
     long long dirty_before_bgsave;  /* Used to restore dirty on failed BGSAVE */
     pid_t rdb_child_pid;            /* PID of RDB saving child */
-    struct saveparam *saveparams;   /* Save points array for RDB */
+    struct saveparam *saveparams;   /* Save points array for RDB 为RDB保存点阵列*/
     int saveparamslen;              /* Number of saving points */
     char *rdb_filename;             /* Name of RDB file */
     int rdb_compression;            /* Use compression in RDB? */

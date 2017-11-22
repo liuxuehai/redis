@@ -36,6 +36,7 @@
 
 /*-----------------------------------------------------------------------------
  * Config file name-value maps.
+ * 配置文件name-value映射。
  *----------------------------------------------------------------------------*/
 
 typedef struct configEnum {
@@ -43,6 +44,7 @@ typedef struct configEnum {
     const int val;
 } configEnum;
 
+/*内存策略*/
 configEnum maxmemory_policy_enum[] = {
     {"volatile-lru", MAXMEMORY_VOLATILE_LRU},
     {"volatile-random",MAXMEMORY_VOLATILE_RANDOM},
@@ -53,6 +55,7 @@ configEnum maxmemory_policy_enum[] = {
     {NULL, 0}
 };
 
+/*系统日志*/
 configEnum syslog_facility_enum[] = {
     {"user",    LOG_USER},
     {"local0",  LOG_LOCAL0},
@@ -66,6 +69,7 @@ configEnum syslog_facility_enum[] = {
     {NULL, 0}
 };
 
+/*日志级别*/
 configEnum loglevel_enum[] = {
     {"debug", LL_DEBUG},
     {"verbose", LL_VERBOSE},
@@ -73,7 +77,7 @@ configEnum loglevel_enum[] = {
     {"warning", LL_WARNING},
     {NULL,0}
 };
-
+/*监督模式*/
 configEnum supervised_mode_enum[] = {
     {"upstart", SUPERVISED_UPSTART},
     {"systemd", SUPERVISED_SYSTEMD},
@@ -81,7 +85,7 @@ configEnum supervised_mode_enum[] = {
     {"no", SUPERVISED_NONE},
     {NULL, 0}
 };
-
+/*aof 模式*/
 configEnum aof_fsync_enum[] = {
     {"everysec", AOF_FSYNC_EVERYSEC},
     {"always", AOF_FSYNC_ALWAYS},
@@ -89,18 +93,20 @@ configEnum aof_fsync_enum[] = {
     {NULL, 0}
 };
 
-/* Output buffer limits presets. */
+/* Output buffer limits presets. 输出缓冲区限制预置。 */
 clientBufferLimitsConfig clientBufferLimitsDefaults[CLIENT_TYPE_OBUF_COUNT] = {
-    {0, 0, 0}, /* normal */
-    {1024*1024*256, 1024*1024*64, 60}, /* slave */
-    {1024*1024*32, 1024*1024*8, 60}  /* pubsub */
+    {0, 0, 0}, /* normal  正常*/
+    {1024*1024*256, 1024*1024*64, 60}, /* slave  从节点*/
+    {1024*1024*32, 1024*1024*8, 60}  /* pubsub  订阅模式*/
 };
 
 /*-----------------------------------------------------------------------------
  * Enum access functions
+ * 访问枚举方法
  *----------------------------------------------------------------------------*/
 
-/* Get enum value from name. If there is no match INT_MIN is returned. */
+/* Get enum value from name. If there is no match INT_MIN is returned.
+ * 通过名称获取枚举 */
 int configEnumGetValue(configEnum *ce, char *name) {
     while(ce->name != NULL) {
         if (!strcasecmp(ce->name,name)) return ce->val;
@@ -109,7 +115,8 @@ int configEnumGetValue(configEnum *ce, char *name) {
     return INT_MIN;
 }
 
-/* Get enum name from value. If no match is found NULL is returned. */
+/* Get enum name from value. If no match is found NULL is returned.
+ * 通过值获取枚举,没有返回null */
 const char *configEnumGetName(configEnum *ce, int val) {
     while(ce->name != NULL) {
         if (ce->val == val) return ce->name;
@@ -119,19 +126,21 @@ const char *configEnumGetName(configEnum *ce, int val) {
 }
 
 /* Wrapper for configEnumGetName() returning "unknown" insetad of NULL if
- * there is no match. */
+ * there is no match.
+ * 包装configEnumGetName*/
 const char *configEnumGetNameOrUnknown(configEnum *ce, int val) {
     const char *name = configEnumGetName(ce,val);
     return name ? name : "unknown";
 }
 
-/* Used for INFO generation. */
+/* Used for INFO generation.  用于信息生成。*/
 const char *evictPolicyToString(void) {
     return configEnumGetNameOrUnknown(maxmemory_policy_enum,server.maxmemory_policy);
 }
 
 /*-----------------------------------------------------------------------------
  * Config file parsing
+ * 配置文件解析
  *----------------------------------------------------------------------------*/
 
 int yesnotoi(char *s) {
@@ -139,7 +148,7 @@ int yesnotoi(char *s) {
     else if (!strcasecmp(s,"no")) return 0;
     else return -1;
 }
-
+/*添加保存参数*/
 void appendServerSaveParams(time_t seconds, int changes) {
     server.saveparams = zrealloc(server.saveparams,sizeof(struct saveparam)*(server.saveparamslen+1));
     server.saveparams[server.saveparamslen].seconds = seconds;
@@ -168,24 +177,26 @@ void loadServerConfigFromString(char *config) {
         linenum = i+1;
         lines[i] = sdstrim(lines[i]," \t\r\n");
 
-        /* Skip comments and blank lines */
+        /* Skip comments and blank lines  跳过注释和空白行*/
         if (lines[i][0] == '#' || lines[i][0] == '\0') continue;
 
-        /* Split into arguments */
+        /* Split into arguments  解析参数*/
         argv = sdssplitargs(lines[i],&argc);
         if (argv == NULL) {
             err = "Unbalanced quotes in configuration line";
             goto loaderr;
         }
 
-        /* Skip this line if the resulting command vector is empty. */
+        /* Skip this line if the resulting command vector is empty.
+         * 跳过命令矩阵为空的行 */
         if (argc == 0) {
             sdsfreesplitres(argv,argc);
             continue;
         }
         sdstolower(argv[0]);
 
-        /* Execute config directives */
+        /* Execute config directives
+         * 执行配置指令 */
         if (!strcasecmp(argv[0],"timeout") && argc == 2) {
             server.maxidletime = atoi(argv[1]);
             if (server.maxidletime < 0) {
@@ -227,7 +238,7 @@ void loadServerConfigFromString(char *config) {
             if (errno || server.unixsocketperm > 0777) {
                 err = "Invalid socket file permissions"; goto loaderr;
             }
-        } else if (!strcasecmp(argv[0],"save")) {
+        } else if (!strcasecmp(argv[0],"save")) {//保存RDB的配置
             if (argc == 3) {
                 int seconds = atoi(argv[1]);
                 int changes = atoi(argv[2]);
@@ -258,7 +269,8 @@ void loadServerConfigFromString(char *config) {
             server.logfile = zstrdup(argv[1]);
             if (server.logfile[0] != '\0') {
                 /* Test if we are able to open the file. The server will not
-                 * be able to abort just for this problem later... */
+                 * be able to abort just for this problem later...
+                 * 测试我们是否能够打开文件。服务器稍后将无法为这个问题中止… */
                 logfp = fopen(server.logfile,"a");
                 if (logfp == NULL) {
                     err = sdscatprintf(sdsempty(),
@@ -624,7 +636,7 @@ void loadServerConfigFromString(char *config) {
         sdsfreesplitres(argv,argc);
     }
 
-    /* Sanity checks. */
+    /* Sanity checks.  完整性检查*/
     if (server.cluster_enabled && server.masterhost) {
         linenum = slaveof_linenum;
         i = linenum-1;
@@ -649,12 +661,15 @@ loaderr:
  *
  * Both filename and options can be NULL, in such a case are considered
  * empty. This way loadServerConfig can be used to just load a file or
- * just load a string. */
+ * just load a string.
+ * 从指定的文件名加载服务器配置。
+ * 该功能将存储在'options'字符串到配置文件的附加配置指令加载前。
+ * 文件名和选项都可以是空的，在这种情况下被认为是空的。这样loadServerConfig可以用来只加载文件或加载字符串。*/
 void loadServerConfig(char *filename, char *options) {
     sds config = sdsempty();
     char buf[CONFIG_MAX_LINE+1];
 
-    /* Load the file content */
+    /* Load the file content  加载文件*/
     if (filename) {
         FILE *fp;
 
@@ -671,7 +686,7 @@ void loadServerConfig(char *filename, char *options) {
             config = sdscat(config,buf);
         if (fp != stdin) fclose(fp);
     }
-    /* Append the additional options */
+    /* Append the additional options  添加附加的选项*/
     if (options) {
         config = sdscat(config,"\n");
         config = sdscat(config,options);
@@ -682,6 +697,7 @@ void loadServerConfig(char *filename, char *options) {
 
 /*-----------------------------------------------------------------------------
  * CONFIG SET implementation
+ * 配置设置实现
  *----------------------------------------------------------------------------*/
 
 #define config_set_bool_field(_name,_var) \
@@ -722,9 +738,9 @@ void configSetCommand(client *c) {
     serverAssertWithInfo(c,c->argv[3],sdsEncodedObject(c->argv[3]));
     o = c->argv[3];
 
-    if (0) { /* this starts the config_set macros else-if chain. */
+    if (0) { /* this starts the config_set macros else-if chain. 这将启动config_set宏如果链。 */
 
-    /* Special fields that can't be handled with general macros. */
+    /* Special fields that can't be handled with general macros.  不能用一般宏处理的特殊字段。*/
     config_set_special_field("dbfilename") {
         if (!pathIsBaseName(o->ptr)) {
             addReplyError(c, "dbfilename can't be a path, just a filename");
@@ -744,7 +760,8 @@ void configSetCommand(client *c) {
 
         if (getLongLongFromObject(o,&ll) == C_ERR || ll < 1) goto badfmt;
 
-        /* Try to check if the OS is capable of supporting so many FDs. */
+        /* Try to check if the OS is capable of supporting so many FDs.
+         * 试着检查操作系统是否能够支持这么多的FDS。*/
         server.maxclients = ll;
         if (ll > orig_value) {
             adjustOpenFilesLimit();
@@ -1245,13 +1262,15 @@ void configGetCommand(client *c) {
 
 /*-----------------------------------------------------------------------------
  * CONFIG REWRITE implementation
+ * 配置重写实现
  *----------------------------------------------------------------------------*/
 
 #define REDIS_CONFIG_REWRITE_SIGNATURE "# Generated by CONFIG REWRITE"
 
 /* We use the following dictionary type to store where a configuration
  * option is mentioned in the old configuration file, so it's
- * like "maxmemory" -> list of line numbers (first line is zero). */
+ * like "maxmemory" -> list of line numbers (first line is zero).
+ * 我们使用下面的字典类型存储旧配置文件中提到的配置选项， */
 unsigned int dictSdsCaseHash(const void *key);
 int dictSdsKeyCaseCompare(void *privdata, const void *key1, const void *key2);
 void dictSdsDestructor(void *privdata, void *val);
@@ -1279,7 +1298,7 @@ dictType optionSetDictType = {
     NULL                        /* val destructor */
 };
 
-/* The config rewrite state. */
+/* The config rewrite state. 配置重写状态 */
 struct rewriteConfigState {
     dict *option_to_line; /* Option -> list of config file lines map */
     dict *rewritten;      /* Dictionary of already processed options */
@@ -1320,7 +1339,8 @@ void rewriteConfigMarkAsProcessed(struct rewriteConfigState *state, const char *
  * config rewrite state, and return it to the caller.
  *
  * If it is impossible to read the old file, NULL is returned.
- * If the old file does not exist at all, an empty state is returned. */
+ * If the old file does not exist at all, an empty state is returned.
+ * 读取旧文件，将其拆分成行，填充新创建的配置重写状态，并将其返回给调用方。 */
 struct rewriteConfigState *rewriteConfigReadOldFile(char *path) {
     FILE *fp = fopen(path,"r");
     struct rewriteConfigState *state = zmalloc(sizeof(*state));
@@ -1336,7 +1356,8 @@ struct rewriteConfigState *rewriteConfigReadOldFile(char *path) {
     state->has_tail = 0;
     if (fp == NULL) return state;
 
-    /* Read the old file line by line, populate the state. */
+    /* Read the old file line by line, populate the state.
+     * 一行一行的读取旧文件 */
     while(fgets(buf,CONFIG_MAX_LINE+1,fp) != NULL) {
         int argc;
         sds *argv;

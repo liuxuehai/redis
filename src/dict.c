@@ -494,7 +494,7 @@ dictEntry *dictFind(dict *d, const void *key)
     dictEntry *he;
     unsigned int h, idx, table;
 
-    if (d->ht[0].used + d->ht[1].used == 0) return NULL; /* dict is empty */
+    if (d->ht[0].used + d->ht[1].used == 0) return NULL; /* dict is empty  字典为空*/
     if (dictIsRehashing(d)) _dictRehashStep(d);
     h = dictHashKey(d, key);
     for (table = 0; table <= 1; table++) {

@@ -55,7 +55,7 @@
 #include <locale.h>
 #include <sys/socket.h>
 
-/* Our shared "common" objects */
+/* Our shared "common" objects  共享 "common"对象*/
 
 struct sharedObjectsStruct shared;
 
