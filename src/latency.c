@@ -32,10 +32,11 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
+/*延迟监视器允许容易地观察延迟来源使用延迟命令在一个redis实例。
+ * 监视不同的延迟源，如磁盘I/O、命令执行、叉系统调用等等。*/
 #include "server.h"
 
-/* Dictionary type for latency events. */
+/* Dictionary type for latency events.  延迟事件的字典类型。*/
 int dictStringKeyCompare(void *privdata, const void *key1, const void *key2) {
     UNUSED(privdata);
     return strcmp(key1,key2) == 0;
@@ -60,7 +61,8 @@ dictType latencyTimeSeriesDictType = {
 
 #ifdef __linux__
 /* Returns 1 if Transparent Huge Pages support is enabled in the kernel.
- * Otherwise (or if we are unable to check) 0 is returned. */
+ * Otherwise (or if we are unable to check) 0 is returned.
+ * 如果在内核中启用了透明的巨页支持，则返回1。否则（或如果无法检查）返回0。 */
 int THPIsEnabled(void) {
     char buf[1024];
 
@@ -86,7 +88,8 @@ int THPGetAnonHugePagesSize(void) {
 
 /* Latency monitor initialization. We just need to create the dictionary
  * of time series, each time serie is craeted on demand in order to avoid
- * having a fixed list to maintain. */
+ * having a fixed list to maintain.
+ * 延迟监视器初始化。我们只需要创建时间序列的词典，每一次意甲成就了你这要求是为了避免固定列表维护。*/
 void latencyMonitorInit(void) {
     server.latency_events = dictCreate(&latencyTimeSeriesDictType,NULL);
 }
@@ -94,13 +97,15 @@ void latencyMonitorInit(void) {
 /* Add the specified sample to the specified time series "event".
  * This function is usually called via latencyAddSampleIfNeeded(), that
  * is a macro that only adds the sample if the latency is higher than
- * server.latency_monitor_threshold. */
+ * server.latency_monitor_threshold.
+ * 将指定的示例添加到指定的时间序列"event"。
+ * 这个函数通常被称为经latencyAddSampleIfNeeded()，那是一个宏，只增加了样品如果等待时间超过server.latency_monitor_threshold。*/
 void latencyAddSample(char *event, mstime_t latency) {
     struct latencyTimeSeries *ts = dictFetchValue(server.latency_events,event);
     time_t now = time(NULL);
     int prev;
 
-    /* Create the time series if it does not exist. */
+    /* Create the time series if it does not exist.  如果时间序列不存在，则创建时间序列。*/
     if (ts == NULL) {
         ts = zmalloc(sizeof(*ts));
         ts->idx = 0;
@@ -110,7 +115,8 @@ void latencyAddSample(char *event, mstime_t latency) {
     }
 
     /* If the previous sample is in the same second, we update our old sample
-     * if this latency is > of the old one, or just return. */
+     * if this latency is > of the old one, or just return.
+     * 如果前一个样本是在同一个第二个，我们更新旧的样本，如果这个延迟是旧的，或刚刚返回。*/
     prev = (ts->idx + LATENCY_TS_LEN - 1) % LATENCY_TS_LEN;
     if (ts->samples[prev].time == now) {
         if (latency > ts->samples[prev].latency)
@@ -130,7 +136,8 @@ void latencyAddSample(char *event, mstime_t latency) {
  * NULL.
  *
  * Note: this is O(N) even when event_to_reset is not NULL because makes
- * the code simpler and we have a small fixed max number of events. */
+ * the code simpler and we have a small fixed max number of events.
+ * 重置指定事件的数据，如果'event'为空，则重置所有事件数据。*/
 int latencyResetEvent(char *event_to_reset) {
     dictIterator *di;
     dictEntry *de;
@@ -155,7 +162,9 @@ int latencyResetEvent(char *event_to_reset) {
  * populate with different metrics, average, MAD, min, max, and so forth.
  * Check latency.h definition of struct latenctStat for more info.
  * If the specified event has no elements the structure is populate with
- * zero values. */
+ * zero values.
+ * 分析一个特定的事件，并返回一个结构填充不同的指标，平均，疯狂，min，max样品值班，等等。检查延迟。更多信息结构latency.h定义。
+ * 如果指定的事件没有元素，则使用零值填充结构。 */
 void analyzeLatencyForEvent(char *event, struct latencyStats *ls) {
     struct latencyTimeSeries *ts = dictFetchValue(server.latency_events,event);
     int j;
@@ -170,7 +179,7 @@ void analyzeLatencyForEvent(char *event, struct latencyStats *ls) {
     ls->period = 0;
     if (!ts) return;
 
-    /* First pass, populate everything but the MAD. */
+    /* First pass, populate everything but the MAD. 第一次传球，填充一切除了MAD。 */
     sum = 0;
     for (j = 0; j < LATENCY_TS_LEN; j++) {
         if (ts->samples[j].time == 0) continue;

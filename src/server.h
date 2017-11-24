@@ -838,7 +838,7 @@ struct redisServer {
     struct saveparam *saveparams;   /* Save points array for RDB 为RDB保存点阵列*/
     int saveparamslen;              /* Number of saving points */
     char *rdb_filename;             /* Name of RDB file */
-    int rdb_compression;            /* Use compression in RDB? */
+    int rdb_compression;            /* Use compression in RDB? RDB中是否使用压缩 */
     int rdb_checksum;               /* Use RDB checksum? */
     time_t lastsave;                /* Unix time of last successful save */
     time_t lastbgsave_try;          /* Unix time of last attempted bgsave */

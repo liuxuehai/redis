@@ -57,8 +57,8 @@
 #endif
 
 static struct winsize ws;
-size_t progress_printed; /* Printed chars in screen-wide progress bar. */
-size_t progress_full; /* How many chars to write to fill the progress bar. */
+size_t progress_printed; /* Printed chars in screen-wide progress bar.  屏幕宽栏中的打印字符*/
+size_t progress_full; /* How many chars to write to fill the progress bar. 要写多少个字符来填充进度条。 */
 
 void memtest_progress_start(char *title, int pass) {
     int j;

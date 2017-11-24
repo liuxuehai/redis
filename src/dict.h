@@ -32,7 +32,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
+/*Hash表实现
+ * 此文件在内存哈希表中实现，其中包含插入/替换/查找/随机元素操作。
+ * 如果需要使用大小为表的2次方，哈希表将自动调整大小，通过链接处理冲突。*/
 #include <stdint.h>
 
 #ifndef __DICT_H
@@ -41,7 +43,7 @@
 #define DICT_OK 0
 #define DICT_ERR 1
 
-/* Unused arguments generate annoying warnings... */
+/* Unused arguments generate annoying warnings...  未使用的参数产生恼人的警告…*/
 #define DICT_NOTUSED(V) ((void) V)
 
 typedef struct dictEntry {
@@ -65,7 +67,8 @@ typedef struct dictType {
 } dictType;
 
 /* This is our hash table structure. Every dictionary has two of this as we
- * implement incremental rehashing, for the old to the new table. */
+ * implement incremental rehashing, for the old to the new table.
+ * 这是我们的哈希表结构。每本字典有两个dictht为我们实现增量rehash，从旧表到新表*/
 typedef struct dictht {
     dictEntry **table;
     unsigned long size;
@@ -77,26 +80,28 @@ typedef struct dict {
     dictType *type;
     void *privdata;
     dictht ht[2];
-    long rehashidx; /* rehashing not in progress if rehashidx == -1 */
-    int iterators; /* number of iterators currently running */
+    long rehashidx; /* rehashing not in progress if rehashidx == -1  -1 表示不在rehash*/
+    int iterators; /* number of iterators currently running 迭代器当前正在运行的数量 */
 } dict;
 
 /* If safe is set to 1 this is a safe iterator, that means, you can call
  * dictAdd, dictFind, and other functions against the dictionary even while
  * iterating. Otherwise it is a non safe iterator, and only dictNext()
- * should be called while iterating. */
+ * should be called while iterating.
+ * 如果安全设置为1这是一个安全的迭代器，这意味着，你可以对词典调用dictAdd, dictFind等功能虽然在迭代。
+ * 否则，它是一个非安全的迭代器，在迭代时只有dictNext()调用 */
 typedef struct dictIterator {
     dict *d;
     long index;
     int table, safe;
     dictEntry *entry, *nextEntry;
-    /* unsafe iterator fingerprint for misuse detection. */
+    /* unsafe iterator fingerprint for misuse detection.  用于误用检测的不安全迭代器指纹。*/
     long long fingerprint;
 } dictIterator;
 
 typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
 
-/* This is the initial size of every hash table */
+/* This is the initial size of every hash table  这是每个哈希表的初始大小。*/
 #define DICT_HT_INITIAL_SIZE     4
 
 /* ------------------------------- Macros ------------------------------------*/

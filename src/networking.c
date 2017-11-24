@@ -35,14 +35,16 @@ static void setProtocolError(client *c, int pos);
 
 /* Return the size consumed from the allocator, for the specified SDS string,
  * including internal fragmentation. This function is used in order to compute
- * the client output buffer size. */
+ * the client output buffer size.
+ * 返回指定的SDS字符串从分配器消耗的大小，包括内部碎片。 此函数用于计算客户机输出缓冲区大小。*/
 size_t sdsZmallocSize(sds s) {
     void *sh = sdsAllocPtr(s);
     return zmalloc_size(sh);
 }
 
 /* Return the amount of memory used by the sds string at object->ptr
- * for a string object. */
+ * for a string object.
+ * 返回的内存使用量由SDS字符串object->ptr为字符串对象。 */
 size_t getStringObjectSdsUsedMemory(robj *o) {
     serverAssertWithInfo(NULL,o,o->type == OBJ_STRING);
     switch(o->encoding) {
@@ -67,7 +69,9 @@ client *createClient(int fd) {
     /* passing -1 as fd it is possible to create a non connected client.
      * This is useful since all the commands needs to be executed
      * in the context of a client. When commands are executed in other
-     * contexts (for instance a Lua script) we need a non connected client. */
+     * contexts (for instance a Lua script) we need a non connected client.
+     * 传递-1作为FD，可以创建非连接客户端。 这是非常有用的，因为所有的命令都需要在客户端上下文中执行。
+     * 在其他情况下执行命令时（例如一个Lua脚本）我们需要一个非连接的客户端。 */
     if (fd != -1) {
         anetNonBlock(NULL,fd);
         anetEnableTcpNoDelay(NULL,fd);
@@ -151,26 +155,34 @@ client *createClient(int fd) {
  *
  * Typically gets called every time a reply is built, before adding more
  * data to the clients output buffers. If the function returns C_ERR no
- * data should be appended to the output buffers. */
+ * data should be appended to the output buffers.
+ * 每次我们向客户机发送新数据时，都会调用这个函数。
+ * 如果客户端要接收新的数据（普通客户）函数返回C_OK，确保安装好了写处理方法在我们的事件循环处理程序，当socket可写新的数据写入。
+ * 如果客户端不能接收新的数据，因为它是一个假的客户端（用于加载AOF在内存），一个主节点或因写句柄失败的设置，该函数返回c_err。
+ * 功能可能c_ok实际上没有安装编写事件处理程序在下列情况下返回：
+ * 1)应该已经安装了事件处理程序，因为输出缓冲区已经包含了一些东西。
+ * 2)客户端是一个字节点，但还没有联机，所以我们只想在缓冲区中积累写，但实际上还没有发送它们。*/
 int prepareClientToWrite(client *c) {
     /* If it's the Lua client we always return ok without installing any
-     * handler since there is no socket at all. */
+     * handler since there is no socket at all. 如果是Lua客户我们总是还可以无需安装任何程序由于没有socket。 */
     if (c->flags & CLIENT_LUA) return C_OK;
 
     /* CLIENT REPLY OFF / SKIP handling: don't send replies. */
     if (c->flags & (CLIENT_REPLY_OFF|CLIENT_REPLY_SKIP)) return C_ERR;
 
     /* Masters don't receive replies, unless CLIENT_MASTER_FORCE_REPLY flag
-     * is set. */
+     * is set. 主节点不接受回复,除非CLIENT_MASTER_FORCE_REPLY标志设置*/
     if ((c->flags & CLIENT_MASTER) &&
         !(c->flags & CLIENT_MASTER_FORCE_REPLY)) return C_ERR;
 
-    if (c->fd <= 0) return C_ERR; /* Fake client for AOF loading. */
+    if (c->fd <= 0) return C_ERR; /* Fake client for AOF loading. 假的客户端为AOF加载 */
 
     /* Schedule the client to write the output buffers to the socket only
      * if not already done (there were no pending writes already and the client
      * was yet not flagged), and, for slaves, if the slave can actually
-     * receive writes at this stage. */
+     * receive writes at this stage.
+     * 只有在尚未完成的情况下，才安排客户机将输出缓冲区写入套接字。(已经没有挂起的写入，客户端还没有标记。)
+     * 而且，对于子节点来说，如果子节点在这个阶段真的能收到写。*/
     if (!clientHasPendingReplies(c) &&
         !(c->flags & CLIENT_PENDING_WRITE) &&
         (c->replstate == REPL_STATE_NONE ||
@@ -186,12 +198,14 @@ int prepareClientToWrite(client *c) {
         listAddNodeHead(server.clients_pending_write,c);
     }
 
-    /* Authorize the caller to queue in the output buffer of this client. */
+    /* Authorize the caller to queue in the output buffer of this client.
+     * 授权调用方在该客户机的输出缓冲区中排队。*/
     return C_OK;
 }
 
 /* Create a duplicate of the last object in the reply list when
- * it is not exclusively owned by the reply list. */
+ * it is not exclusively owned by the reply list.
+ * 当应答列表不完全属于应答列表时，在应答列表中创建最后一个对象的副本。*/
 robj *dupLastObjectIfNeeded(list *reply) {
     robj *new, *cur;
     listNode *ln;
@@ -207,7 +221,7 @@ robj *dupLastObjectIfNeeded(list *reply) {
 }
 
 /* -----------------------------------------------------------------------------
- * Low level functions to add more data to output buffers.
+ * Low level functions to add more data to output buffers. 添加更多的数据到输出缓冲区
  * -------------------------------------------------------------------------- */
 
 int _addReplyToBuffer(client *c, const char *s, size_t len) {
@@ -216,10 +230,12 @@ int _addReplyToBuffer(client *c, const char *s, size_t len) {
     if (c->flags & CLIENT_CLOSE_AFTER_REPLY) return C_OK;
 
     /* If there already are entries in the reply list, we cannot
-     * add anything more to the static buffer. */
+     * add anything more to the static buffer.
+     * 如果答复列表中已经有条目，则不能向静态缓冲区添加任何其他内容。*/
     if (listLength(c->reply) > 0) return C_ERR;
 
-    /* Check that the buffer has enough space available for this string. */
+    /* Check that the buffer has enough space available for this string.
+     * 检查缓冲区是否有足够的可用空间用于此字符串。 */
     if (len > available) return C_ERR;
 
     memcpy(c->buf+c->bufpos,s,len);
@@ -239,7 +255,7 @@ void _addReplyObjectToList(client *c, robj *o) {
     } else {
         tail = listNodeValue(listLast(c->reply));
 
-        /* Append to this object when possible. */
+        /* Append to this object when possible.  如果可能的话，附加到这个对象。*/
         if (tail->ptr != NULL &&
             tail->encoding == OBJ_ENCODING_RAW &&
             sdslen(tail->ptr)+sdslen(o->ptr) <= PROTO_REPLY_CHUNK_BYTES)
@@ -258,7 +274,8 @@ void _addReplyObjectToList(client *c, robj *o) {
 }
 
 /* This method takes responsibility over the sds. When it is no longer
- * needed it will be free'd, otherwise it ends up in a robj. */
+ * needed it will be free'd, otherwise it ends up in a robj.
+ * 这种方法对SDS负责。当它不再需要将会释放，否则它结束在一个robj。*/
 void _addReplySdsToList(client *c, sds s) {
     robj *tail;
 
@@ -324,6 +341,7 @@ void _addReplyStringToList(client *c, const char *s, size_t len) {
 /* -----------------------------------------------------------------------------
  * Higher level functions to queue data on the client output buffer.
  * The following functions are the ones that commands implementations will call.
+ * 在客户端输出缓冲区上排队数据的高级函数。
  * -------------------------------------------------------------------------- */
 
 void addReply(client *c, robj *obj) {
@@ -438,7 +456,8 @@ void *addDeferredMultiBulkLength(client *c) {
     return listLast(c->reply);
 }
 
-/* Populate the length object and try gluing it to the next chunk. */
+/* Populate the length object and try gluing it to the next chunk.
+ * 填充长度对象并尝试将其粘贴到下一个块。*/
 void setDeferredMultiBulkLength(client *c, void *node, long length) {
     listNode *ln = (listNode*)node;
     robj *len, *next;

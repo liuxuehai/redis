@@ -37,7 +37,8 @@
 #include "server.h"
 
 /* The current RDB version. When the format changes in a way that is no longer
- * backward compatible this number gets incremented. */
+ * backward compatible this number gets incremented.
+ * 当前数据库版本。当格式不再向后兼容时，该数字将递增。*/
 #define RDB_VERSION 7
 
 /* Defines related to the dump file format. To store 32 bits lengths for short
@@ -52,7 +53,12 @@
  *           See the RDB_ENC_* defines.
  *
  * Lengths up to 63 are stored using a single byte, most DB keys, and may
- * values, will fit inside. */
+ * values, will fit inside.
+ * 定义与转储文件格式相关的内容。为了存储短key的32位长度需要大量的空间，所以我们检查第一字节中最重要的2位来解释长度：
+ * 00|000000 =>如果两个MSB 00长度是6位的字节
+ * 01|000000 00000000 => 01，长度为14字节，6位+ 8位一个字节
+ * 10|000000 [32 bit integer] =>如果是10，一个完整的32位长度将跟随
+ * 11|000000 特殊编码对象将跟随。六位数字指定后面的对象类型。*/
 #define RDB_6BITLEN 0
 #define RDB_14BITLEN 1
 #define RDB_32BITLEN 2
@@ -61,34 +67,38 @@
 
 /* When a length of a string object stored on disk has the first two bits
  * set, the remaining two bits specify a special encoding for the object
- * accordingly to the following defines: */
-#define RDB_ENC_INT8 0        /* 8 bit signed integer */
-#define RDB_ENC_INT16 1       /* 16 bit signed integer */
-#define RDB_ENC_INT32 2       /* 32 bit signed integer */
-#define RDB_ENC_LZF 3         /* string compressed with FASTLZ */
+ * accordingly to the following defines:
+ * 当存储在磁盘上的字符串对象的长度有前两位设置时，剩下的两位为相应的对象指定一个特殊的编码，如下所述*/
+#define RDB_ENC_INT8 0        /* 8 bit signed integer  8位有符号整数*/
+#define RDB_ENC_INT16 1       /* 16 bit signed integer  16位有符号整数*/
+#define RDB_ENC_INT32 2       /* 32 bit signed integer  32位有符号整数*/
+#define RDB_ENC_LZF 3         /* string compressed with FASTLZ   字符串通过FASTLZ压缩*/
 
 /* Dup object types to RDB object types. Only reason is readability (are we
- * dealing with RDB types or with in-memory object types?). */
+ * dealing with RDB types or with in-memory object types?).
+ * DUP的对象类型的数据库对象类型。唯一的原因是可读性（我们处理关系数据库类型或内存中的对象类型？）。 */
 #define RDB_TYPE_STRING 0
 #define RDB_TYPE_LIST   1
 #define RDB_TYPE_SET    2
 #define RDB_TYPE_ZSET   3
 #define RDB_TYPE_HASH   4
-/* NOTE: WHEN ADDING NEW RDB TYPE, UPDATE rdbIsObjectType() BELOW */
+/* NOTE: WHEN ADDING NEW RDB TYPE, UPDATE rdbIsObjectType() BELOW
+ * 添加新的数据类型时，更新rdbIsObjectType()下面*/
 
-/* Object types for encoded objects. */
+/* Object types for encoded objects.  编码对象的对象类型。*/
 #define RDB_TYPE_HASH_ZIPMAP    9
 #define RDB_TYPE_LIST_ZIPLIST  10
 #define RDB_TYPE_SET_INTSET    11
 #define RDB_TYPE_ZSET_ZIPLIST  12
 #define RDB_TYPE_HASH_ZIPLIST  13
 #define RDB_TYPE_LIST_QUICKLIST 14
-/* NOTE: WHEN ADDING NEW RDB TYPE, UPDATE rdbIsObjectType() BELOW */
+/* NOTE: WHEN ADDING NEW RDB TYPE, UPDATE rdbIsObjectType() BELOW 添加新的数据类型时，更新rdbIsObjectType()下面*/
 
-/* Test if a type is an object type. */
+/* Test if a type is an object type.  测试类型是否为一个对象*/
 #define rdbIsObjectType(t) ((t >= 0 && t <= 4) || (t >= 9 && t <= 14))
 
-/* Special RDB opcodes (saved/loaded with rdbSaveType/rdbLoadType). */
+/* Special RDB opcodes (saved/loaded with rdbSaveType/rdbLoadType).
+ * 特殊的数据库操作(saved/loaded with rdbSaveType/rdbLoadType) */
 #define RDB_OPCODE_AUX        250
 #define RDB_OPCODE_RESIZEDB   251
 #define RDB_OPCODE_EXPIRETIME_MS 252

@@ -897,12 +897,13 @@ void moveCommand(client *c) {
 }
 
 /*-----------------------------------------------------------------------------
- * Expires API
+ * Expires API 过期API
  *----------------------------------------------------------------------------*/
 
 int removeExpire(redisDb *db, robj *key) {
     /* An expire may only be removed if there is a corresponding entry in the
-     * main dict. Otherwise, the key will never be freed. */
+     * main dict. Otherwise, the key will never be freed.
+     * 只有在主字典中对应的条目过期才会被,否则key将永远不会被释放。*/
     serverAssertWithInfo(NULL,key,dictFind(db->dict,key->ptr) != NULL);
     return dictDelete(db->expires,key->ptr) == DICT_OK;
 }
@@ -910,7 +911,8 @@ int removeExpire(redisDb *db, robj *key) {
 void setExpire(redisDb *db, robj *key, long long when) {
     dictEntry *kde, *de;
 
-    /* Reuse the sds from the main dict in the expire dict */
+    /* Reuse the sds from the main dict in the expire dict
+     * 利用SDS在到期的在主字典*/
     kde = dictFind(db->dict,key->ptr);
     serverAssertWithInfo(NULL,key,kde != NULL);
     de = dictReplaceRaw(db->expires,dictGetKey(kde));
@@ -918,16 +920,18 @@ void setExpire(redisDb *db, robj *key, long long when) {
 }
 
 /* Return the expire time of the specified key, or -1 if no expire
- * is associated with this key (i.e. the key is non volatile) */
+ * is associated with this key (i.e. the key is non volatile)
+ * 返回指定key的过期时间，或者如果没有与此key关联的到期时间（即key是非volatile的），则返回-1。*/
 long long getExpire(redisDb *db, robj *key) {
     dictEntry *de;
 
-    /* No expire? return ASAP */
+    /* No expire? return ASAP 没有过期时间,尽快返回 */
     if (dictSize(db->expires) == 0 ||
        (de = dictFind(db->expires,key->ptr)) == NULL) return -1;
 
     /* The entry was found in the expire dict, this means it should also
-     * be present in the main dict (safety check). */
+     * be present in the main dict (safety check).
+     * 入口是在过期字典发现，这意味着它目前也应该在主词典（安全检查）。 */
     serverAssertWithInfo(NULL,key,dictFind(db->dict,key->ptr) != NULL);
     return dictGetSignedIntegerVal(de);
 }
@@ -939,7 +943,11 @@ long long getExpire(redisDb *db, robj *key) {
  * This way the key expiry is centralized in one place, and since both
  * AOF and the master->slave link guarantee operation ordering, everything
  * will be consistent even if we allow write operations against expiring
- * keys. */
+ * keys.
+ *
+ * 将过期key传递到子节点和AOF文件。
+ * 在主节点key到期时，DEL操作这个key发送给所有的子节点和AOF文件如果启用。
+ * 这种方式的key的过期是集中在一个地方，由于AOF和master->slave环节保证运行有序，一切都会一致，即使我们允许对到期的key写入操作。*/
 void propagateExpire(redisDb *db, robj *key) {
     robj *argv[2];
 
@@ -998,7 +1006,7 @@ int expireIfNeeded(redisDb *db, robj *key) {
 }
 
 /*-----------------------------------------------------------------------------
- * Expires Commands
+ * Expires Commands 过期命令
  *----------------------------------------------------------------------------*/
 
 /* This is the generic command implementation for EXPIRE, PEXPIRE, EXPIREAT
@@ -1007,10 +1015,11 @@ int expireIfNeeded(redisDb *db, robj *key) {
  * for *AT variants of the command, or the current time for relative expires).
  *
  * unit is either UNIT_SECONDS or UNIT_MILLISECONDS, and is only used for
- * the argv[2] parameter. The basetime is always specified in milliseconds. */
+ * the argv[2] parameter. The basetime is always specified in milliseconds.
+ * 这是通用的命令执行EXPIRE, PEXPIRE, EXPIREAT和PEXPIREAT。因为命令的第二个参数可以相对或绝对的"basetime"参数用于信号的基础上的时间是（0×在命令、变量或当前时间相对到期）。*/
 void expireGenericCommand(client *c, long long basetime, int unit) {
     robj *key = c->argv[1], *param = c->argv[2];
-    long long when; /* unix time in milliseconds when the key will expire. */
+    long long when; /* unix time in milliseconds when the key will expire.  当key到期时以毫秒为单位的UNIX时间。*/
 
     if (getLongLongFromObjectOrReply(c, param, &when, NULL) != C_OK)
         return;
@@ -1018,7 +1027,7 @@ void expireGenericCommand(client *c, long long basetime, int unit) {
     if (unit == UNIT_SECONDS) when *= 1000;
     when += basetime;
 
-    /* No key, return zero. */
+    /* No key, return zero.  key不存在,返回0*/
     if (lookupKeyWrite(c->db,key) == NULL) {
         addReply(c,shared.czero);
         return;
@@ -1029,14 +1038,16 @@ void expireGenericCommand(client *c, long long basetime, int unit) {
      * of a slave instance.
      *
      * Instead we take the other branch of the IF statement setting an expire
-     * (possibly in the past) and wait for an explicit DEL from the master. */
+     * (possibly in the past) and wait for an explicit DEL from the master.
+     * 负TTL到期，或EXPIREAT带有时间戳的过去永远不应该作为一个DEL当负载多种或一个字节点实例的上下文中执行。
+     * 相反，我们将IF语句的另一个分支设置为过期（可能在过去），并等待来自主节点的显式DEL。*/
     if (when <= mstime() && !server.loading && !server.masterhost) {
         robj *aux;
 
         serverAssertWithInfo(c,key,dbDelete(c->db,key));
         server.dirty++;
 
-        /* Replicate/AOF this as an explicit DEL. */
+        /* Replicate/AOF this as an explicit DEL.  复制一点这个是一个显式删除。*/
         aux = createStringObject("DEL",3);
         rewriteClientCommandVector(c,2,aux,key);
         decrRefCount(aux);
@@ -1073,13 +1084,13 @@ void pexpireatCommand(client *c) {
 void ttlGenericCommand(client *c, int output_ms) {
     long long expire, ttl = -1;
 
-    /* If the key does not exist at all, return -2 */
+    /* If the key does not exist at all, return -2  如果key不存在返回-2*/
     if (lookupKeyReadWithFlags(c->db,c->argv[1],LOOKUP_NOTOUCH) == NULL) {
         addReplyLongLong(c,-2);
         return;
     }
     /* The key exists. Return -1 if it has no expire, or the actual
-     * TTL value otherwise. */
+     * TTL value otherwise.  key存在,如果没有过期返回-1 ,否则返回实际TTL值*/
     expire = getExpire(c->db,c->argv[1]);
     if (expire != -1) {
         ttl = expire-mstime();
@@ -1125,11 +1136,12 @@ void touchCommand(client *c) {
 }
 
 /* -----------------------------------------------------------------------------
- * API to get key arguments from commands
+ * API to get key arguments from commands  从命令获取key参数API
  * ---------------------------------------------------------------------------*/
 
 /* The base case is to use the keys position as given in the command table
- * (firstkey, lastkey, step). */
+ * (firstkey, lastkey, step).
+ * 基本情况是使用命令表中指定的键位置。*/
 int *getKeysUsingCommandTable(struct redisCommand *cmd,robj **argv, int argc, int *numkeys) {
     int j, i = 0, last, *keys;
     UNUSED(argv);
@@ -1159,7 +1171,8 @@ int *getKeysUsingCommandTable(struct redisCommand *cmd,robj **argv, int argc, in
  * table, according to the command name in argv[0].
  *
  * This function uses the command table if a command-specific helper function
- * is not required, otherwise it calls the command-specific function. */
+ * is not required, otherwise it calls the command-specific function.
+ * 返回所有参数是在命令通过argc、argv的key。 */
 int *getKeysFromCommand(struct redisCommand *cmd, robj **argv, int argc, int *numkeys) {
     if (cmd->getkeys_proc) {
         return cmd->getkeys_proc(cmd,argv,argc,numkeys);
@@ -1168,7 +1181,7 @@ int *getKeysFromCommand(struct redisCommand *cmd, robj **argv, int argc, int *nu
     }
 }
 
-/* Free the result of getKeysFromCommand. */
+/* Free the result of getKeysFromCommand.  释放getKeysFromCommand的结果*/
 void getKeysFreeResult(int *result) {
     zfree(result);
 }
@@ -1182,7 +1195,7 @@ int *zunionInterGetKeys(struct redisCommand *cmd, robj **argv, int argc, int *nu
 
     num = atoi(argv[2]->ptr);
     /* Sanity check. Don't return any key if the command is going to
-     * reply with syntax error. */
+     * reply with syntax error. 完整性检查,不返回任何key,如果出错 */
     if (num > (argc-3)) {
         *numkeys = 0;
         return NULL;
@@ -1238,7 +1251,7 @@ int *sortGetKeys(struct redisCommand *cmd, robj **argv, int argc, int *numkeys) 
     UNUSED(cmd);
 
     num = 0;
-    keys = zmalloc(sizeof(int)*2); /* Alloc 2 places for the worst case. */
+    keys = zmalloc(sizeof(int)*2); /* Alloc 2 places for the worst case.  最坏情况分配2个空间*/
 
     keys[num++] = 1; /* <sort-key> is always present. */
 
@@ -1279,11 +1292,11 @@ int *migrateGetKeys(struct redisCommand *cmd, robj **argv, int argc, int *numkey
     int i, num, first, *keys;
     UNUSED(cmd);
 
-    /* Assume the obvious form. */
+    /* Assume the obvious form.  呈现明显的形式。*/
     first = 3;
     num = 1;
 
-    /* But check for the extended one with the KEYS option. */
+    /* But check for the extended one with the KEYS option.  但选中扩展键选项。*/
     if (argc > 6) {
         for (i = 6; i < argc; i++) {
             if (!strcasecmp(argv[i]->ptr,"keys") &&
@@ -1304,7 +1317,8 @@ int *migrateGetKeys(struct redisCommand *cmd, robj **argv, int argc, int *numkey
 
 /* Slot to Key API. This is used by Redis Cluster in order to obtain in
  * a fast way a key that belongs to a specified hash slot. This is useful
- * while rehashing the cluster. */
+ * while rehashing the cluster.
+ * 插槽到键API。这是通过为Redis集群用于快速方法的关键，属于指定的插槽的获得。这是有用的如果重新hash在集群。 */
 void slotToKeyAdd(robj *key) {
     unsigned int hashslot = keyHashSlot(key->ptr,sdslen(key->ptr));
 
@@ -1340,7 +1354,8 @@ unsigned int getKeysInSlot(unsigned int hashslot, robj **keys, unsigned int coun
 }
 
 /* Remove all the keys in the specified hash slot.
- * The number of removed items is returned. */
+ * The number of removed items is returned.
+ * 删除指定散列槽中的所有键。返回的项的数目将返回。*/
 unsigned int delKeysInSlot(unsigned int hashslot) {
     zskiplistNode *n;
     zrangespec range;
@@ -1352,8 +1367,8 @@ unsigned int delKeysInSlot(unsigned int hashslot) {
     n = zslFirstInRange(server.cluster->slots_to_keys, &range);
     while(n && n->score == hashslot) {
         robj *key = n->obj;
-        n = n->level[0].forward; /* Go to the next item before freeing it. */
-        incrRefCount(key); /* Protect the object while freeing it. */
+        n = n->level[0].forward; /* Go to the next item before freeing it.  释放之前先去下一个项目。*/
+        incrRefCount(key); /* Protect the object while freeing it.  释放物体时要保护它。*/
         dbDelete(&server.db[0],key);
         decrRefCount(key);
         j++;
@@ -1370,18 +1385,18 @@ unsigned int countKeysInSlot(unsigned int hashslot) {
     range.min = range.max = hashslot;
     range.minex = range.maxex = 0;
 
-    /* Find first element in range */
+    /* Find first element in range  查找范围中的第一个元素*/
     zn = zslFirstInRange(zsl, &range);
 
-    /* Use rank of first element, if any, to determine preliminary count */
+    /* Use rank of first element, if any, to determine preliminary count  使用第一个元素的rank，如果有的话，确定初步计数。*/
     if (zn != NULL) {
         rank = zslGetRank(zsl, zn->score, zn->obj);
         count = (zsl->length - (rank - 1));
 
-        /* Find last element in range */
+        /* Find last element in range  查找范围中的最后一个元素*/
         zn = zslLastInRange(zsl, &range);
 
-        /* Use rank of last element, if any, to determine the actual count */
+        /* Use rank of last element, if any, to determine the actual count 使用最后一个元素的rank，如果有的话，以确定实际计数。 */
         if (zn != NULL) {
             rank = zslGetRank(zsl, zn->score, zn->obj);
             count -= (zsl->length - rank);

@@ -172,7 +172,7 @@ void rdbCheckSetupSignals(void) {
     sigaction(SIGILL, &act, NULL);
 }
 
-/* Check the specified RDB file. */
+/* Check the specified RDB file.  检查指定RDB文件*/
 int redis_check_rdb(char *rdbfilename) {
     uint64_t dbid;
     int type, rdbver;
@@ -325,7 +325,8 @@ eoferr: /* unexpected end of file is handled here with a fatal exit */
  * redis-check-rdb alias.
  *
  * The function never returns, but exits with the status code according
- * to success (RDB is sane) or error (RDB is corrupted). */
+ * to success (RDB is sane) or error (RDB is corrupted).
+ * RDB检查的主要方法：从redis.c调用当redis进行使用redis-check-rdb别名。 */
 int redis_check_rdb_main(int argc, char **argv) {
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <rdb-file-name>\n", argv[0]);

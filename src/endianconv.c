@@ -40,7 +40,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
+/**
+ * 字节序转换工具。
+ */
 
 #include <stdint.h>
 
