@@ -43,20 +43,24 @@ robj *createObject(int type, void *ptr) {
     o->ptr = ptr;
     o->refcount = 1;
 
-    /* Set the LRU to the current lruclock (minutes resolution). */
+    /* Set the LRU to the current lruclock (minutes resolution). 设置当前LRU时钟 */
     o->lru = LRU_CLOCK();
     return o;
 }
 
 /* Create a string object with encoding OBJ_ENCODING_RAW, that is a plain
- * string object where o->ptr points to a proper sds string. */
+ * string object where o->ptr points to a proper sds string.
+ * 创建一个字符串对象编码为 OBJ_ENCODING_RAW
+ * 这是一个简单的字符串对象O -> ptr指向正确的SDS的字符串。*/
 robj *createRawStringObject(const char *ptr, size_t len) {
     return createObject(OBJ_STRING,sdsnewlen(ptr,len));
 }
 
 /* Create a string object with encoding OBJ_ENCODING_EMBSTR, that is
  * an object where the sds string is actually an unmodifiable string
- * allocated in the same chunk as the object itself. */
+ * allocated in the same chunk as the object itself.
+ * 创建一个编码OBJ_ENCODING_EMBSTR的字符串对象
+ * 这是一个对象的字符串实际上是一个不可修改的字符串表分配到与对象本身相同的块中。*/
 robj *createEmbeddedStringObject(const char *ptr, size_t len) {
     robj *o = zmalloc(sizeof(robj)+sizeof(struct sdshdr8)+len+1);
     struct sdshdr8 *sh = (void*)(o+1);
@@ -84,7 +88,8 @@ robj *createEmbeddedStringObject(const char *ptr, size_t len) {
  * used.
  *
  * The current limit of 39 is chosen so that the biggest string object
- * we allocate as EMBSTR will still fit into the 64 byte arena of jemalloc. */
+ * we allocate as EMBSTR will still fit into the 64 byte arena of jemalloc.
+ * 字符串长度小于44分配EMBSTR字符串,否则创建RAW字符串*/
 #define OBJ_ENCODING_EMBSTR_SIZE_LIMIT 44
 robj *createStringObject(const char *ptr, size_t len) {
     if (len <= OBJ_ENCODING_EMBSTR_SIZE_LIMIT)

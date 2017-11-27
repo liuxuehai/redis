@@ -34,7 +34,7 @@
 
 /* Turn a string representing notification classes into an integer
  * representing notification classes flags xored.
- *
+ * 转换字符串表示的通知类型
  * The function returns -1 if the input contains characters not mapping to
  * any class. */
 int keyspaceEventsStringToFlags(char *classes) {
@@ -63,7 +63,8 @@ int keyspaceEventsStringToFlags(char *classes) {
 /* This function does exactly the revese of the function above: it gets
  * as input an integer with the xored flags and returns a string representing
  * the selected classes. The string returned is an sds string that needs to
- * be released with sdsfree(). */
+ * be released with sdsfree().
+ * 获取通知类型代表的字符串*/
 sds keyspaceEventsFlagsToString(int flags) {
     sds res;
 
@@ -98,7 +99,7 @@ void notifyKeyspaceEvent(int type, char *event, robj *key, int dbid) {
     int len = -1;
     char buf[24];
 
-    /* If notifications for this class of events are off, return ASAP. */
+    /* If notifications for this class of events are off, return ASAP. 通知事件类关闭了,返回*/
     if (!(server.notify_keyspace_events & type)) return;
 
     eventobj = createStringObject(event,strlen(event));

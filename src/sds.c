@@ -77,13 +77,15 @@ static inline char sdsReqType(size_t string_size) {
  *
  * You can print the string with printf() as there is an implicit \0 at the
  * end of the string. However the string is binary safe and can contain
- * \0 characters in the middle, as the length is stored in the sds header. */
+ * \0 characters in the middle, as the length is stored in the sds header.
+ * 创建一个新SDS字符串,初始内容为'init'参数,根据'initlen' 长度选择类型*/
 sds sdsnewlen(const void *init, size_t initlen) {
     void *sh;
     sds s;
     char type = sdsReqType(initlen);
     /* Empty strings are usually created in order to append. Use type 8
-     * since type 5 is not good at this. */
+     * since type 5 is not good at this.
+     * 空字符串通常是为了追加而创建的。使用类型8，因为类型5不擅长此*/
     if (type == SDS_TYPE_5 && initlen == 0) type = SDS_TYPE_8;
     int hdrlen = sdsHdrSize(type);
     unsigned char *fp; /* flags pointer. */
@@ -135,23 +137,26 @@ sds sdsnewlen(const void *init, size_t initlen) {
 }
 
 /* Create an empty (zero length) sds string. Even in this case the string
- * always has an implicit null term. */
+ * always has an implicit null term.
+ * 创建一个空的sds字符串,*/
 sds sdsempty(void) {
     return sdsnewlen("",0);
 }
 
-/* Create a new sds string starting from a null terminated C string. */
+/* Create a new sds string starting from a null terminated C string.
+ * 从一个空终止的C字符串开始创建一个新的SDS字符串。*/
 sds sdsnew(const char *init) {
     size_t initlen = (init == NULL) ? 0 : strlen(init);
     return sdsnewlen(init, initlen);
 }
 
-/* Duplicate an sds string. */
+/* Duplicate an sds string. 复制*/
 sds sdsdup(const sds s) {
     return sdsnewlen(s, sdslen(s));
 }
 
-/* Free an sds string. No operation is performed if 's' is NULL. */
+/* Free an sds string. No operation is performed if 's' is NULL.
+ * 释放*/
 void sdsfree(sds s) {
     if (s == NULL) return;
     s_free((char*)s-sdsHdrSize(s[-1]));
@@ -170,7 +175,8 @@ void sdsfree(sds s) {
  *
  * The output will be "2", but if we comment out the call to sdsupdatelen()
  * the output will be "6" as the string was modified but the logical length
- * remains 6 bytes. */
+ * remains 6 bytes.
+ * 更新长度*/
 void sdsupdatelen(sds s) {
     int reallen = strlen(s);
     sdssetlen(s, reallen);
@@ -179,7 +185,8 @@ void sdsupdatelen(sds s) {
 /* Modify an sds string in-place to make it empty (zero length).
  * However all the existing buffer is not discarded but set as free space
  * so that next append operations will not require allocations up to the
- * number of bytes previously available. */
+ * number of bytes previously available.
+ * 情况字符串 */
 void sdsclear(sds s) {
     sdssetlen(s, 0);
     s[0] = '\0';
