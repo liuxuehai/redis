@@ -120,7 +120,9 @@ robj *createStringObjectFromLongLong(long long value) {
  * however this results in loss of precision. Otherwise exp format is used
  * and the output of snprintf() is not modified.
  *
- * The 'humanfriendly' option is used for INCRBYFLOAT and HINCRBYFLOAT. */
+ * The 'humanfriendly' option is used for INCRBYFLOAT and HINCRBYFLOAT.
+ * 从 long double 创建一个字符串对象,
+ * 如果humanfriendly非零，它不使用指数形式和装饰最后尾随零，但是这一结果有精度损失。*/
 robj *createStringObjectFromLongDouble(long double value, int humanfriendly) {
     char buf[256];
     int len;
@@ -140,9 +142,11 @@ robj *createStringObjectFromLongDouble(long double value, int humanfriendly) {
          * after rounding is able to represent most small decimal numbers in a
          * way that is "non surprising" for the user (that is, most small
          * decimal numbers will be represented in a way that when converted
-         * back into a string are exactly the same as what the user typed.) */
+         * back into a string are exactly the same as what the user typed.)
+         * 我们使用17位精度，因为128位浮点数，舍入后的精度可以用一种对用户来说“不奇怪”的方式来代表小数点的小数位数。*/
         len = snprintf(buf,sizeof(buf),"%.17Lf", value);
-        /* Now remove trailing zeroes after the '.' */
+        /* Now remove trailing zeroes after the '.'
+         * 现在删除尾随零后'.' */
         if (strchr(buf,'.') != NULL) {
             char *p = buf+len-1;
             while(*p == '0') {
@@ -164,7 +168,8 @@ robj *createStringObjectFromLongDouble(long double value, int humanfriendly) {
  * (or a string object that contains a representation of a small integer)
  * will always result in a fresh object that is unshared (refcount == 1).
  *
- * The resulting object always has refcount set to 1. */
+ * The resulting object always has refcount set to 1.
+ * 复制字符串对象，并保证返回的对象与原始对象具有相同的编码。 */
 robj *dupStringObject(robj *o) {
     robj *d;
 
@@ -322,7 +327,8 @@ void decrRefCount(robj *o) {
 
 /* This variant of decrRefCount() gets its argument as void, and is useful
  * as free method in data structures that expect a 'void free_object(void*)'
- * prototype for the free method. */
+ * prototype for the free method.
+ * 这种变异的decrRefCount()空隙获取它的参数，并可作为数据结构的方法 */
 void decrRefCountVoid(void *o) {
     decrRefCount(o);
 }
@@ -338,6 +344,8 @@ void decrRefCountVoid(void *o) {
  *    *obj = createObject(...);
  *    functionThatWillIncrementRefCount(obj);
  *    decrRefCount(obj);
+ *    此函数将REF计数设置为零而不释放对象。
+ *    为了通过一个新的目标函数递增的接收对象的引用计数是有用的。
  */
 robj *resetRefCount(robj *obj) {
     obj->refcount = 0;
@@ -362,7 +370,8 @@ int isObjectRepresentableAsLongLong(robj *o, long long *llval) {
     }
 }
 
-/* Try to encode a string object in order to save space */
+/* Try to encode a string object in order to save space
+ * 为了节省空间，尝试对字符串对象进行编码。*/
 robj *tryObjectEncoding(robj *o) {
     long value;
     sds s = o->ptr;
@@ -371,28 +380,34 @@ robj *tryObjectEncoding(robj *o) {
     /* Make sure this is a string object, the only type we encode
      * in this function. Other types use encoded memory efficient
      * representations but are handled by the commands implementing
-     * the type. */
+     * the type.
+     * 确保是一个字符串对象*/
     serverAssertWithInfo(NULL,o,o->type == OBJ_STRING);
 
     /* We try some specialized encoding only for objects that are
      * RAW or EMBSTR encoded, in other words objects that are still
-     * in represented by an actually array of chars. */
+     * in represented by an actually array of chars.
+     * 我们尝试了一些指定的编码只为RAW or EMBSTR对象编码
+     * 换句话说，仍然以实际字符数组表示的对象。*/
     if (!sdsEncodedObject(o)) return o;
 
     /* It's not safe to encode shared objects: shared objects can be shared
      * everywhere in the "object space" of Redis and may end in places where
-     * they are not handled. We handle them only as values in the keyspace. */
+     * they are not handled. We handle them only as values in the keyspace.
+     * 对共享对象进行编码是不安全的。 我们把他们只在空间价值。*/
      if (o->refcount > 1) return o;
 
     /* Check if we can represent this string as a long integer.
      * Note that we are sure that a string larger than 20 chars is not
-     * representable as a 32 nor 64 bit integer. */
+     * representable as a 32 nor 64 bit integer.
+     * 检查是否可以将此字符串表示为长整数。请注意，我们相信，一个字符串大于20字符不表示为32或64位整数。*/
     len = sdslen(s);
     if (len <= 20 && string2l(s,len,&value)) {
         /* This object is encodable as a long. Try to use a shared object.
          * Note that we avoid using shared integers when maxmemory is used
          * because every object needs to have a private LRU field for the LRU
-         * algorithm to work well. */
+         * algorithm to work well.
+         * 字符串可以编码为long*/
         if ((server.maxmemory == 0 ||
              (server.maxmemory_policy != MAXMEMORY_VOLATILE_LRU &&
               server.maxmemory_policy != MAXMEMORY_ALLKEYS_LRU)) &&
@@ -413,7 +428,9 @@ robj *tryObjectEncoding(robj *o) {
     /* If the string is small and is still RAW encoded,
      * try the EMBSTR encoding which is more efficient.
      * In this representation the object and the SDS string are allocated
-     * in the same chunk of memory to save space and cache misses. */
+     * in the same chunk of memory to save space and cache misses.
+     * 如果字符串很小并且还是RAW编码,尝试EMBSTR编码
+     * 在这个表示中，对象和SDS字符串分配在同一块内存中，以节省空间和缓存丢失。*/
     if (len <= OBJ_ENCODING_EMBSTR_SIZE_LIMIT) {
         robj *emb;
 
@@ -431,7 +448,8 @@ robj *tryObjectEncoding(robj *o) {
      *
      * We do that only for relatively large strings as this branch
      * is only entered if the length of the string is greater than
-     * OBJ_ENCODING_EMBSTR_SIZE_LIMIT. */
+     * OBJ_ENCODING_EMBSTR_SIZE_LIMIT.
+     * 无法编码对象,最后一次尝试，至少在字符串对象中优化SDS字符串，只需要很少的空间，*/
     if (o->encoding == OBJ_ENCODING_RAW &&
         sdsavail(s) > len/10)
     {
@@ -443,7 +461,8 @@ robj *tryObjectEncoding(robj *o) {
 }
 
 /* Get a decoded version of an encoded object (returned as a new object).
- * If the object is already raw-encoded just increment the ref count. */
+ * If the object is already raw-encoded just increment the ref count.
+ * 返回编码对象的解码版本,如果对象已经是RAW编码,就只增加对象的引用数*/
 robj *getDecodedObject(robj *o) {
     robj *dec;
 
@@ -468,7 +487,8 @@ robj *getDecodedObject(robj *o) {
  * and compare the strings, it's much faster than calling getDecodedObject().
  *
  * Important note: when REDIS_COMPARE_BINARY is used a binary-safe comparison
- * is used. */
+ * is used.
+ * 比较2个字符串对象*/
 
 #define REDIS_COMPARE_BINARY (1<<0)
 #define REDIS_COMPARE_COLL (1<<1)
