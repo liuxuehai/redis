@@ -36,6 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+/*部分快速排序算法实现*/
 
 #include <sys/types.h>
 
@@ -50,6 +51,7 @@ static inline void	 swapfunc (char *, char *, size_t, int);
 
 /*
  * Qsort routine from Bentley & McIlroy's "Engineering a Sort Function".
+ * 将以parmi和parmj为首地址的n个字节进行交换
  */
 #define swapcode(TYPE, parmi, parmj, n) { 		\
 	size_t i = (n) / sizeof (TYPE); 		\
@@ -85,6 +87,7 @@ swapfunc(char *a, char *b, size_t n, int swaptype)
 
 #define vecswap(a, b, n) if ((n) > 0) swapfunc((a), (b), (size_t)(n), swaptype)
 
+/*根据回调函数cmp指定的比较规则，则求出变量a，b，c中处于中间大小的变量。换句话说：就是在求 中位数。*/
 static inline char *
 med3(char *a, char *b, char *c,
     int (*cmp) (const void *, const void *))

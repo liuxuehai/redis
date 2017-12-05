@@ -42,29 +42,29 @@ extern char **environ;
 
 #define REDIS_SENTINEL_PORT 26379
 
-/* ======================== Sentinel global state =========================== */
+/* ======================== Sentinel global state  哨兵全局状态=========================== */
 
-/* Address object, used to describe an ip:port pair. */
+/* Address object, used to describe an ip:port pair. 地址对象 */
 typedef struct sentinelAddr {
     char *ip;
     int port;
 } sentinelAddr;
 
-/* A Sentinel Redis Instance object is monitoring. */
+/* A Sentinel Redis Instance object is monitoring.  哨兵实例对象在监控中*/
 #define SRI_MASTER  (1<<0)
 #define SRI_SLAVE   (1<<1)
 #define SRI_SENTINEL (1<<2)
-#define SRI_S_DOWN (1<<3)   /* Subjectively down (no quorum). */
-#define SRI_O_DOWN (1<<4)   /* Objectively down (confirmed by others). */
+#define SRI_S_DOWN (1<<3)   /* Subjectively down (no quorum). 主观上下来*/
+#define SRI_O_DOWN (1<<4)   /* Objectively down (confirmed by others).  客观上下来*/
 #define SRI_MASTER_DOWN (1<<5) /* A Sentinel with this flag set thinks that
-                                   its master is down. */
+                                   its master is down. 一个哨兵这个标志认为它的主节点下来了。*/
 #define SRI_FAILOVER_IN_PROGRESS (1<<6) /* Failover is in progress for
-                                           this master. */
-#define SRI_PROMOTED (1<<7)            /* Slave selected for promotion. */
+                                           this master. 此主节点正在进行故障转移。*/
+#define SRI_PROMOTED (1<<7)            /* Slave selected for promotion.  子节点被晋升*/
 #define SRI_RECONF_SENT (1<<8)     /* SLAVEOF <newmaster> sent. */
-#define SRI_RECONF_INPROG (1<<9)   /* Slave synchronization in progress. */
-#define SRI_RECONF_DONE (1<<10)     /* Slave synchronized with new master. */
-#define SRI_FORCE_FAILOVER (1<<11)  /* Force failover with master up. */
+#define SRI_RECONF_INPROG (1<<9)   /* Slave synchronization in progress. 子节点同步中*/
+#define SRI_RECONF_DONE (1<<10)     /* Slave synchronized with new master. 子节点同步一个新主节点*/
+#define SRI_FORCE_FAILOVER (1<<11)  /* Force failover with master up. 主节点起来之后强制故障迁移*/
 #define SRI_SCRIPT_KILL_SENT (1<<12) /* SCRIPT KILL already sent on -BUSY */
 
 /* Note: times are in milliseconds. */
@@ -85,21 +85,23 @@ typedef struct sentinelAddr {
 #define SENTINEL_ELECTION_TIMEOUT 10000
 #define SENTINEL_MAX_DESYNC 1000
 
-/* Failover machine different states. */
-#define SENTINEL_FAILOVER_STATE_NONE 0  /* No failover in progress. */
-#define SENTINEL_FAILOVER_STATE_WAIT_START 1  /* Wait for failover_start_time*/
-#define SENTINEL_FAILOVER_STATE_SELECT_SLAVE 2 /* Select slave to promote */
-#define SENTINEL_FAILOVER_STATE_SEND_SLAVEOF_NOONE 3 /* Slave -> Master */
-#define SENTINEL_FAILOVER_STATE_WAIT_PROMOTION 4 /* Wait slave to change role */
-#define SENTINEL_FAILOVER_STATE_RECONF_SLAVES 5 /* SLAVEOF newmaster */
-#define SENTINEL_FAILOVER_STATE_UPDATE_CONFIG 6 /* Monitor promoted slave. */
+/* Failover machine different states.  故障迁移机器的不同状态*/
+#define SENTINEL_FAILOVER_STATE_NONE 0  /* No failover in progress. 没有故障迁移 */
+#define SENTINEL_FAILOVER_STATE_WAIT_START 1  /* Wait for failover_start_time 等待故障迁移开始时间*/
+#define SENTINEL_FAILOVER_STATE_SELECT_SLAVE 2 /* Select slave to promote  选择一个字节点去晋升*/
+#define SENTINEL_FAILOVER_STATE_SEND_SLAVEOF_NOONE 3 /* Slave -> Master 子节点->主节点 */
+#define SENTINEL_FAILOVER_STATE_WAIT_PROMOTION 4 /* Wait slave to change role  等待子节点转换角色*/
+#define SENTINEL_FAILOVER_STATE_RECONF_SLAVES 5 /* SLAVEOF newmaster SLAVEOF 新主节点 */
+#define SENTINEL_FAILOVER_STATE_UPDATE_CONFIG 6 /* Monitor promoted slave.  监控晋升的子节点*/
 
 #define SENTINEL_MASTER_LINK_STATUS_UP 0
 #define SENTINEL_MASTER_LINK_STATUS_DOWN 1
 
 /* Generic flags that can be used with different functions.
  * They use higher bits to avoid colliding with the function specific
- * flags. */
+ * flags.
+ * 可用于不同功能的通用标志。
+ * 它们使用更高的位避免与特定于函数的标志冲突。*/
 #define SENTINEL_NO_FLAGS 0
 #define SENTINEL_GENERATE_EVENT (1<<16)
 #define SENTINEL_LEADER (1<<17)
@@ -134,49 +136,49 @@ typedef struct sentinelAddr {
  * Links are shared only for Sentinels: master and slave instances have
  * a link with refcount = 1, always. */
 typedef struct instanceLink {
-    int refcount;          /* Number of sentinelRedisInstance owners. */
+    int refcount;          /* Number of sentinelRedisInstance owners.  sentinelredisinstance拥有者的数量*/
     int disconnected;      /* Non-zero if we need to reconnect cc or pc. */
-    int pending_commands;  /* Number of commands sent waiting for a reply. */
-    redisAsyncContext *cc; /* Hiredis context for commands. */
-    redisAsyncContext *pc; /* Hiredis context for Pub / Sub. */
-    mstime_t cc_conn_time; /* cc connection time. */
-    mstime_t pc_conn_time; /* pc connection time. */
-    mstime_t pc_last_activity; /* Last time we received any message. */
+    int pending_commands;  /* Number of commands sent waiting for a reply.  等待回复的命令数*/
+    redisAsyncContext *cc; /* Hiredis context for commands. 命令的Hiredis上下文 */
+    redisAsyncContext *pc; /* Hiredis context for Pub / Sub. Pub/Sub的Hiredis上下文 */
+    mstime_t cc_conn_time; /* cc connection time.  cc链接时间*/
+    mstime_t pc_conn_time; /* pc connection time.  pc链接时间*/
+    mstime_t pc_last_activity; /* Last time we received any message.  最近收到消息的时间*/
     mstime_t last_avail_time; /* Last time the instance replied to ping with
-                                 a reply we consider valid. */
+                                 a reply we consider valid.  最近收到ping消息回复的时间 */
     mstime_t act_ping_time;   /* Time at which the last pending ping (no pong
                                  received after it) was sent. This field is
                                  set to 0 when a pong is received, and set again
                                  to the current time if the value is 0 and a new
-                                 ping is sent. */
+                                 ping is sent.  最近ping发送时间(没有收到回复)收到回复后为0*/
     mstime_t last_ping_time;  /* Time at which we sent the last ping. This is
                                  only used to avoid sending too many pings
                                  during failure. Idle time is computed using
-                                 the act_ping_time field. */
+                                 the act_ping_time field.  最近ping时间*/
     mstime_t last_pong_time;  /* Last time the instance replied to ping,
                                  whatever the reply was. That's used to check
-                                 if the link is idle and must be reconnected. */
+                                 if the link is idle and must be reconnected. 最近回复ping的时间 */
     mstime_t last_reconn_time;  /* Last reconnection attempt performed when
-                                   the link was down. */
+                                   the link was down.  链接短了之后尝试重连的最近时间*/
 } instanceLink;
 
 typedef struct sentinelRedisInstance {
     int flags;      /* See SRI_... defines */
-    char *name;     /* Master name from the point of view of this sentinel. */
-    char *runid;    /* Run ID of this instance, or unique ID if is a Sentinel.*/
-    uint64_t config_epoch;  /* Configuration epoch. */
-    sentinelAddr *addr; /* Master host. */
+    char *name;     /* Master name from the point of view of this sentinel. 主节点名称 */
+    char *runid;    /* Run ID of this instance, or unique ID if is a Sentinel. 实例执行进程id*/
+    uint64_t config_epoch;  /* Configuration epoch.  配置epoch*/
+    sentinelAddr *addr; /* Master host.  主节点host*/
     instanceLink *link; /* Link to the instance, may be shared for Sentinels. */
-    mstime_t last_pub_time;   /* Last time we sent hello via Pub/Sub. */
+    mstime_t last_pub_time;   /* Last time we sent hello via Pub/Sub.  发送hello的Pub/Sub最近时间 */
     mstime_t last_hello_time; /* Only used if SRI_SENTINEL is set. Last time
                                  we received a hello from this Sentinel
-                                 via Pub/Sub. */
+                                 via Pub/Sub.  最近hello时间*/
     mstime_t last_master_down_reply_time; /* Time of last reply to
-                                             SENTINEL is-master-down command. */
-    mstime_t s_down_since_time; /* Subjectively down since time. */
-    mstime_t o_down_since_time; /* Objectively down since time. */
-    mstime_t down_after_period; /* Consider it down after that period. */
-    mstime_t info_refresh;  /* Time at which we received INFO output from it. */
+                                             SENTINEL is-master-down command. is-master-down命令的最近回复时间 */
+    mstime_t s_down_since_time; /* Subjectively down since time.  主观认为服务器下来时间*/
+    mstime_t o_down_since_time; /* Objectively down since time.  客观人服务器下来时间*/
+    mstime_t down_after_period; /* Consider it down after that period.  服务器下来的时间间隔*/
+    mstime_t info_refresh;  /* Time at which we received INFO output from it.  INFO回复时间*/
 
     /* Role and the first time we observed it.
      * This is useful in order to delay replacing what the instance reports
@@ -185,52 +187,53 @@ typedef struct sentinelRedisInstance {
      * we do silly things. */
     int role_reported;
     mstime_t role_reported_time;
-    mstime_t slave_conf_change_time; /* Last time slave master addr changed. */
+    mstime_t slave_conf_change_time; /* Last time slave master addr changed.  最近子节点改变主节点地址时间*/
 
     /* Master specific. */
-    dict *sentinels;    /* Other sentinels monitoring the same master. */
-    dict *slaves;       /* Slaves for this master instance. */
-    unsigned int quorum;/* Number of sentinels that need to agree on failure. */
-    int parallel_syncs; /* How many slaves to reconfigure at same time. */
-    char *auth_pass;    /* Password to use for AUTH against master & slaves. */
+    dict *sentinels;    /* Other sentinels monitoring the same master.  其他哨兵监控同一个主节点的列表*/
+    dict *slaves;       /* Slaves for this master instance. 该主节点的子节点 */
+    unsigned int quorum;/* Number of sentinels that need to agree on failure. 失败时需要多少个哨兵同意 */
+    int parallel_syncs; /* How many slaves to reconfigure at same time.  同时重新配置的子节点数*/
+    char *auth_pass;    /* Password to use for AUTH against master & slaves.  */
 
     /* Slave specific. */
-    mstime_t master_link_down_time; /* Slave replication link down time. */
-    int slave_priority; /* Slave priority according to its INFO output. */
-    mstime_t slave_reconf_sent_time; /* Time at which we sent SLAVE OF <new> */
-    struct sentinelRedisInstance *master; /* Master instance if it's slave. */
-    char *slave_master_host;    /* Master host as reported by INFO */
-    int slave_master_port;      /* Master port as reported by INFO */
-    int slave_master_link_status; /* Master link status as reported by INFO */
-    unsigned long long slave_repl_offset; /* Slave replication offset. */
-    /* Failover */
+    mstime_t master_link_down_time; /* Slave replication link down time.  子节点复制连接断开时间*/
+    int slave_priority; /* Slave priority according to its INFO output. 子节点优先级 */
+    mstime_t slave_reconf_sent_time; /* Time at which we sent SLAVE OF <new>  发送SLAVE OF命令的时间*/
+    struct sentinelRedisInstance *master; /* Master instance if it's slave.  如果是子节点,该值为父节点实例*/
+    char *slave_master_host;    /* Master host as reported by INFO  通过info报告的主节点host信息*/
+    int slave_master_port;      /* Master port as reported by INFO  通过info报告的主节点port信息*/
+    int slave_master_link_status; /* Master link status as reported by INFO  通过info报告的主节点status信*/
+    unsigned long long slave_repl_offset; /* Slave replication offset.  子节点复制偏移量*/
+    /* Failover  故障*/
     char *leader;       /* If this is a master instance, this is the runid of
                            the Sentinel that should perform the failover. If
                            this is a Sentinel, this is the runid of the Sentinel
-                           that this Sentinel voted as leader. */
-    uint64_t leader_epoch; /* Epoch of the 'leader' field. */
-    uint64_t failover_epoch; /* Epoch of the currently started failover. */
-    int failover_state; /* See SENTINEL_FAILOVER_STATE_* defines. */
+                           that this Sentinel voted as leader.  如果是主节点,这个是哨兵的进程id执行故障,
+                               如果是哨兵,这个是哨兵的进程id,选举这个哨兵为leader*/
+    uint64_t leader_epoch; /* Epoch of the 'leader' field.  'leader'的Epoch*/
+    uint64_t failover_epoch; /* Epoch of the currently started failover. 当前开始故障的Epoch */
+    int failover_state; /* See SENTINEL_FAILOVER_STATE_* defines.  当前故障的状态*/
     mstime_t failover_state_change_time;
-    mstime_t failover_start_time;   /* Last failover attempt start time. */
-    mstime_t failover_timeout;      /* Max time to refresh failover state. */
+    mstime_t failover_start_time;   /* Last failover attempt start time.  最近故障尝试开始时间*/
+    mstime_t failover_timeout;      /* Max time to refresh failover state.  故障尝试超时时间*/
     mstime_t failover_delay_logged; /* For what failover_start_time value we
-                                       logged the failover delay. */
-    struct sentinelRedisInstance *promoted_slave; /* Promoted slave instance. */
+                                       logged the failover delay.  */
+    struct sentinelRedisInstance *promoted_slave; /* Promoted slave instance.  晋升的子节点实例*/
     /* Scripts executed to notify admin or reconfigure clients: when they
      * are set to NULL no script is executed. */
     char *notification_script;
     char *client_reconfig_script;
-    sds info; /* cached INFO output */
+    sds info; /* cached INFO output 缓存的info输出 */
 } sentinelRedisInstance;
 
-/* Main state. */
+/* Main state.  主状态*/
 struct sentinelState {
-    char myid[CONFIG_RUN_ID_SIZE+1]; /* This sentinel ID. */
-    uint64_t current_epoch;         /* Current epoch. */
+    char myid[CONFIG_RUN_ID_SIZE+1]; /* This sentinel ID.  这个哨兵id*/
+    uint64_t current_epoch;         /* Current epoch.  当前epoch*/
     dict *masters;      /* Dictionary of master sentinelRedisInstances.
                            Key is the instance name, value is the
-                           sentinelRedisInstance structure pointer. */
+                           sentinelRedisInstance structure pointer. 主节点列表 */
     int tilt;           /* Are we in TILT mode? */
     int running_scripts;    /* Number of scripts in execution right now. */
     mstime_t tilt_start_time;       /* When TITL started. */
@@ -442,12 +445,12 @@ void initSentinelConfig(void) {
     server.port = REDIS_SENTINEL_PORT;
 }
 
-/* Perform the Sentinel mode initialization. */
+/* Perform the Sentinel mode initialization.  初始化哨兵模式*/
 void initSentinel(void) {
     unsigned int j;
 
     /* Remove usual Redis commands from the command table, then just add
-     * the SENTINEL command. */
+     * the SENTINEL command.  清除常用命令,只添加哨兵命令*/
     dictEmpty(server.commands,NULL);
     for (j = 0; j < sizeof(sentinelcmds)/sizeof(sentinelcmds[0]); j++) {
         int retval;
@@ -457,7 +460,7 @@ void initSentinel(void) {
         serverAssert(retval == DICT_OK);
     }
 
-    /* Initialize various data structures. */
+    /* Initialize various data structures.  初始化数据结构*/
     sentinel.current_epoch = 0;
     sentinel.masters = dictCreate(&instancesDictType,NULL);
     sentinel.tilt = 0;
@@ -472,7 +475,8 @@ void initSentinel(void) {
 }
 
 /* This function gets called when the server is in Sentinel mode, started,
- * loaded the configuration, and is ready for normal operations. */
+ * loaded the configuration, and is ready for normal operations.
+ * 如果是在哨兵模式,启动加载配置文件,然后开始通常操作*/
 void sentinelIsRunning(void) {
     int j;
 
@@ -489,7 +493,8 @@ void sentinelIsRunning(void) {
 
     /* If this Sentinel has yet no ID set in the configuration file, we
      * pick a random one and persist the config on disk. From now on this
-     * will be this Sentinel ID across restarts. */
+     * will be this Sentinel ID across restarts.
+     * 如果哨兵没有id在配置文件,选择一个随机id,并持久化到配置文件,之后重启也是这个哨兵id*/
     for (j = 0; j < CONFIG_RUN_ID_SIZE; j++)
         if (sentinel.myid[j] != 0) break;
 
@@ -499,11 +504,11 @@ void sentinelIsRunning(void) {
         sentinelFlushConfig();
     }
 
-    /* Log its ID to make debugging of issues simpler. */
+    /* Log its ID to make debugging of issues simpler. 保存日志 */
     serverLog(LL_WARNING,"Sentinel ID is %s", sentinel.myid);
 
     /* We want to generate a +monitor event for every configured master
-     * at startup. */
+     * at startup.  发起一个监听事件为每个配置的主节点在启动时*/
     sentinelGenerateInitialMonitorEvents();
 }
 
@@ -532,7 +537,7 @@ sentinelAddr *createSentinelAddr(char *hostname, int port) {
     return sa;
 }
 
-/* Return a duplicate of the source address. */
+/* Return a duplicate of the source address. 返回复制的源地址 */
 sentinelAddr *dupSentinelAddr(sentinelAddr *src) {
     sentinelAddr *sa;
 
@@ -542,7 +547,7 @@ sentinelAddr *dupSentinelAddr(sentinelAddr *src) {
     return sa;
 }
 
-/* Free a Sentinel address. Can't fail. */
+/* Free a Sentinel address. Can't fail. 释放地址 */
 void releaseSentinelAddr(sentinelAddr *sa) {
     sdsfree(sa->ip);
     zfree(sa);
@@ -616,7 +621,7 @@ void sentinelEvent(int level, char *type, sentinelRedisInstance *ri,
     if (level >= server.verbosity)
         serverLog(level,"%s %s",type,msg);
 
-    /* Publish the message via Pub/Sub if it's not a debugging one. */
+    /* Publish the message via Pub/Sub if it's not a debugging one.  发布消息*/
     if (level != LL_DEBUG) {
         channel = createStringObject(type,strlen(type));
         payload = createStringObject(msg,strlen(msg));

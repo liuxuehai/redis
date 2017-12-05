@@ -55,31 +55,31 @@
 #include "config.h"
 #include "server.h"
 
-/* ------------------------- Buffer I/O implementation ----------------------- */
+/* ------------------------- Buffer I/O implementation 缓存io实现----------------------- */
 
-/* Returns 1 or 0 for success/failure. */
+/* Returns 1 or 0 for success/failure. 写成功返回1,否则0*/
 static size_t rioBufferWrite(rio *r, const void *buf, size_t len) {
     r->io.buffer.ptr = sdscatlen(r->io.buffer.ptr,(char*)buf,len);
     r->io.buffer.pos += len;
     return 1;
 }
 
-/* Returns 1 or 0 for success/failure. */
+/* Returns 1 or 0 for success/failure. 读成功返回1,否则0*/
 static size_t rioBufferRead(rio *r, void *buf, size_t len) {
     if (sdslen(r->io.buffer.ptr)-r->io.buffer.pos < len)
-        return 0; /* not enough buffer to return len bytes. */
+        return 0; /* not enough buffer to return len bytes. 长度不够 */
     memcpy(buf,r->io.buffer.ptr+r->io.buffer.pos,len);
     r->io.buffer.pos += len;
     return 1;
 }
 
-/* Returns read/write position in buffer. */
+/* Returns read/write position in buffer. 返回当前缓存位置*/
 static off_t rioBufferTell(rio *r) {
     return r->io.buffer.pos;
 }
 
 /* Flushes any buffer to target device if applicable. Returns 1 on success
- * and 0 on failures. */
+ * and 0 on failures.  刷新缓存到目标*/
 static int rioBufferFlush(rio *r) {
     UNUSED(r);
     return 1; /* Nothing to do, our write just appends to the buffer. */
@@ -90,7 +90,7 @@ static const rio rioBufferIO = {
     rioBufferWrite,
     rioBufferTell,
     rioBufferFlush,
-    NULL,           /* update_checksum */
+    NULL,           /* update_checksum  */
     0,              /* current checksum */
     0,              /* bytes read or written */
     0,              /* read/write chunk size */
@@ -105,7 +105,7 @@ void rioInitWithBuffer(rio *r, sds s) {
 
 /* --------------------- Stdio file pointer implementation ------------------- */
 
-/* Returns 1 or 0 for success/failure. */
+/* Returns 1 or 0 for success/failure. 写成功返回1,否则0 */
 static size_t rioFileWrite(rio *r, const void *buf, size_t len) {
     size_t retval;
 
@@ -122,7 +122,7 @@ static size_t rioFileWrite(rio *r, const void *buf, size_t len) {
     return retval;
 }
 
-/* Returns 1 or 0 for success/failure. */
+/* Returns 1 or 0 for success/failure.  读成功返回1,否则0*/
 static size_t rioFileRead(rio *r, void *buf, size_t len) {
     return fread(buf,len,1,r->io.file.fp);
 }

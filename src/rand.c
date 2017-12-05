@@ -40,6 +40,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+/*伪随机数生成函数来自pysam源代码获得drand48()功能。*/
 
 #include <stdint.h>
 
