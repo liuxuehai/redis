@@ -49,7 +49,8 @@ robj *setTypeCreate(robj *value) {
  * the reference count of the object if needed in order to retain a copy.
  *
  * If the value was already member of the set, nothing is done and 0 is
- * returned, otherwise the new element is added and 1 is returned. */
+ * returned, otherwise the new element is added and 1 is returned.
+ * 添加值到set*/
 int setTypeAdd(robj *subject, robj *value) {
     long long llval;
     if (subject->encoding == OBJ_ENCODING_HT) {

@@ -31,12 +31,13 @@
 #include <math.h>
 
 /*-----------------------------------------------------------------------------
- * Hash type API
+ * Hash type API  Hash 类型API
  *----------------------------------------------------------------------------*/
 
 /* Check the length of a number of objects to see if we need to convert a
  * ziplist to a real hash. Note that we only check string encoded objects
  * as their string length can be queried in constant time. */
+//检查对象的长度,是否需要将list转换为真实hash,只检查字符串编码的
 void hashTypeTryConversion(robj *o, robj **argv, int start, int end) {
     int i;
 
@@ -53,6 +54,7 @@ void hashTypeTryConversion(robj *o, robj **argv, int start, int end) {
 }
 
 /* Encode given objects in-place when the hash uses a dict. */
+// 编码给定对象,当hash使用一个字典时
 void hashTypeTryObjectEncoding(robj *subject, robj **o1, robj **o2) {
     if (subject->encoding == OBJ_ENCODING_HT) {
         if (o1) *o1 = tryObjectEncoding(*o1);
@@ -61,7 +63,8 @@ void hashTypeTryObjectEncoding(robj *subject, robj **o1, robj **o2) {
 }
 
 /* Get the value from a ziplist encoded hash, identified by field.
- * Returns -1 when the field cannot be found. */
+ * Returns -1 when the field cannot be found.
+ * 获取值从一个ziplist*/
 int hashTypeGetFromZiplist(robj *o, robj *field,
                            unsigned char **vstr,
                            unsigned int *vlen,
@@ -79,7 +82,7 @@ int hashTypeGetFromZiplist(robj *o, robj *field,
     if (fptr != NULL) {
         fptr = ziplistFind(fptr, field->ptr, sdslen(field->ptr), 1);
         if (fptr != NULL) {
-            /* Grab pointer to the value (fptr points to the field) */
+            /* Grab pointer to the value (fptr points to the field)  抓取指向值的指针*/
             vptr = ziplistNext(zl, fptr);
             serverAssert(vptr != NULL);
         }
@@ -97,7 +100,8 @@ int hashTypeGetFromZiplist(robj *o, robj *field,
 }
 
 /* Get the value from a hash table encoded hash, identified by field.
- * Returns -1 when the field cannot be found. */
+ * Returns -1 when the field cannot be found.
+ * 从hash表获取值 */
 int hashTypeGetFromHashTable(robj *o, robj *field, robj **value) {
     dictEntry *de;
 
@@ -114,7 +118,8 @@ int hashTypeGetFromHashTable(robj *o, robj *field, robj **value) {
  * can retain a reference or call decrRefCount after the usage.
  *
  * The lower level function can prevent copy on write so it is
- * the preferred way of doing read operations. */
+ * the preferred way of doing read operations.
+ * hash获取*/
 robj *hashTypeGetObject(robj *o, robj *field) {
     robj *value = NULL;
 
@@ -145,7 +150,8 @@ robj *hashTypeGetObject(robj *o, robj *field) {
 
 /* Higher level function using hashTypeGet*() to return the length of the
  * object associated with the requested field, or 0 if the field does not
- * exist. */
+ * exist.
+ * 获取hash值的长度*/
 size_t hashTypeGetValueLength(robj *o, robj *field) {
     size_t len = 0;
     if (o->encoding == OBJ_ENCODING_ZIPLIST) {
@@ -167,7 +173,8 @@ size_t hashTypeGetValueLength(robj *o, robj *field) {
 }
 
 /* Test if the specified field exists in the given hash. Returns 1 if the field
- * exists, and 0 when it doesn't. */
+ * exists, and 0 when it doesn't.
+ * 测试key是否存在*/
 int hashTypeExists(robj *o, robj *field) {
     if (o->encoding == OBJ_ENCODING_ZIPLIST) {
         unsigned char *vstr = NULL;
@@ -188,7 +195,8 @@ int hashTypeExists(robj *o, robj *field) {
 /* Add an element, discard the old if the key already exists.
  * Return 0 on insert and 1 on update.
  * This function will take care of incrementing the reference count of the
- * retained fields and value objects. */
+ * retained fields and value objects.
+ * 设置hash值*/
 int hashTypeSet(robj *o, robj *field, robj *value) {
     int update = 0;
 
@@ -217,7 +225,7 @@ int hashTypeSet(robj *o, robj *field, robj *value) {
         }
 
         if (!update) {
-            /* Push new field/value pair onto the tail of the ziplist */
+            /* Push new field/value pair onto the tail of the ziplist 设置值到队尾*/
             zl = ziplistPush(zl, field->ptr, sdslen(field->ptr), ZIPLIST_TAIL);
             zl = ziplistPush(zl, value->ptr, sdslen(value->ptr), ZIPLIST_TAIL);
         }
@@ -242,7 +250,8 @@ int hashTypeSet(robj *o, robj *field, robj *value) {
 }
 
 /* Delete an element from a hash.
- * Return 1 on deleted and 0 on not found. */
+ * Return 1 on deleted and 0 on not found.
+ * 删除一个key */
 int hashTypeDelete(robj *o, robj *field) {
     int deleted = 0;
 
@@ -280,7 +289,8 @@ int hashTypeDelete(robj *o, robj *field) {
     return deleted;
 }
 
-/* Return the number of elements in a hash. */
+/* Return the number of elements in a hash.
+ * 返回hash的元素个数 */
 unsigned long hashTypeLength(robj *o) {
     unsigned long length = ULONG_MAX;
 
@@ -321,7 +331,8 @@ void hashTypeReleaseIterator(hashTypeIterator *hi) {
 }
 
 /* Move to the next entry in the hash. Return C_OK when the next entry
- * could be found and C_ERR when the iterator reaches the end. */
+ * could be found and C_ERR when the iterator reaches the end.
+ * 返回下一个entry */
 int hashTypeNext(hashTypeIterator *hi) {
     if (hi->encoding == OBJ_ENCODING_ZIPLIST) {
         unsigned char *zl;
@@ -358,7 +369,8 @@ int hashTypeNext(hashTypeIterator *hi) {
 }
 
 /* Get the field or value at iterator cursor, for an iterator on a hash value
- * encoded as a ziplist. Prototype is similar to `hashTypeGetFromZiplist`. */
+ * encoded as a ziplist. Prototype is similar to `hashTypeGetFromZiplist`.
+ * 根据迭代指针返回key或是值 */
 void hashTypeCurrentFromZiplist(hashTypeIterator *hi, int what,
                                 unsigned char **vstr,
                                 unsigned int *vlen,
@@ -480,7 +492,7 @@ void hashTypeConvert(robj *o, int enc) {
 }
 
 /*-----------------------------------------------------------------------------
- * Hash type commands
+ * Hash type commands hash命令
  *----------------------------------------------------------------------------*/
 
 void hsetCommand(client *c) {

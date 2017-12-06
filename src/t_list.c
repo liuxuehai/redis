@@ -38,6 +38,7 @@
  *
  * There is no need for the caller to increment the refcount of 'value' as
  * the function takes care of it if needed. */
+/*list添加元素到指定位置*/
 void listTypePush(robj *subject, robj *value, int where) {
     if (subject->encoding == OBJ_ENCODING_QUICKLIST) {
         int pos = (where == LIST_HEAD) ? QUICKLIST_HEAD : QUICKLIST_TAIL;
@@ -53,7 +54,7 @@ void listTypePush(robj *subject, robj *value, int where) {
 void *listPopSaver(unsigned char *data, unsigned int sz) {
     return createStringObject((char*)data,sz);
 }
-
+/*获取元素*/
 robj *listTypePop(robj *subject, int where) {
     long long vlong;
     robj *value = NULL;
@@ -79,7 +80,8 @@ unsigned long listTypeLength(robj *subject) {
     }
 }
 
-/* Initialize an iterator at the specified index. */
+/* Initialize an iterator at the specified index.
+ * list迭代器*/
 listTypeIterator *listTypeInitIterator(robj *subject, long index,
                                        unsigned char direction) {
     listTypeIterator *li = zmalloc(sizeof(listTypeIterator));
@@ -100,7 +102,7 @@ listTypeIterator *listTypeInitIterator(robj *subject, long index,
     return li;
 }
 
-/* Clean up the iterator. */
+/* Clean up the iterator. 清除list迭代器*/
 void listTypeReleaseIterator(listTypeIterator *li) {
     zfree(li->iter);
     zfree(li);
@@ -108,7 +110,8 @@ void listTypeReleaseIterator(listTypeIterator *li) {
 
 /* Stores pointer to current the entry in the provided entry structure
  * and advances the position of the iterator. Returns 1 when the current
- * entry is in fact an entry, 0 otherwise. */
+ * entry is in fact an entry, 0 otherwise.
+ * list迭代下一个*/
 int listTypeNext(listTypeIterator *li, listTypeEntry *entry) {
     /* Protect from converting when iterating */
     serverAssert(li->subject->encoding == li->encoding);
@@ -122,7 +125,8 @@ int listTypeNext(listTypeIterator *li, listTypeEntry *entry) {
     return 0;
 }
 
-/* Return entry or NULL at the current position of the iterator. */
+/* Return entry or NULL at the current position of the iterator.
+ * 返回entry的值*/
 robj *listTypeGet(listTypeEntry *entry) {
     robj *value = NULL;
     if (entry->li->encoding == OBJ_ENCODING_QUICKLIST) {
@@ -137,7 +141,7 @@ robj *listTypeGet(listTypeEntry *entry) {
     }
     return value;
 }
-
+/*list插入值*/
 void listTypeInsert(listTypeEntry *entry, robj *value, int where) {
     if (entry->li->encoding == OBJ_ENCODING_QUICKLIST) {
         value = getDecodedObject(value);
@@ -156,7 +160,8 @@ void listTypeInsert(listTypeEntry *entry, robj *value, int where) {
     }
 }
 
-/* Compare the given object with the entry at the current position. */
+/* Compare the given object with the entry at the current position.
+ * 比较给定值在当前位置 */
 int listTypeEqual(listTypeEntry *entry, robj *o) {
     if (entry->li->encoding == OBJ_ENCODING_QUICKLIST) {
         serverAssertWithInfo(NULL,o,sdsEncodedObject(o));
@@ -166,7 +171,8 @@ int listTypeEqual(listTypeEntry *entry, robj *o) {
     }
 }
 
-/* Delete the element pointed to. */
+/* Delete the element pointed to.
+ * 删除list元素*/
 void listTypeDelete(listTypeIterator *iter, listTypeEntry *entry) {
     if (entry->li->encoding == OBJ_ENCODING_QUICKLIST) {
         quicklistDelEntry(iter->iter, &entry->entry);
@@ -175,7 +181,8 @@ void listTypeDelete(listTypeIterator *iter, listTypeEntry *entry) {
     }
 }
 
-/* Create a quicklist from a single ziplist */
+/* Create a quicklist from a single ziplist
+ * 从ziplist转换为quicklist */
 void listTypeConvert(robj *subject, int enc) {
     serverAssertWithInfo(NULL,subject,subject->type==OBJ_LIST);
     serverAssertWithInfo(NULL,subject,subject->encoding==OBJ_ENCODING_ZIPLIST);
@@ -191,7 +198,7 @@ void listTypeConvert(robj *subject, int enc) {
 }
 
 /*-----------------------------------------------------------------------------
- * List Commands
+ * List Commands list命令
  *----------------------------------------------------------------------------*/
 
 void pushGenericCommand(client *c, int where) {
@@ -612,7 +619,8 @@ void rpoplpushCommand(client *c) {
  */
 
 /* Set a client in blocking mode for the specified key, with the specified
- * timeout */
+ * timeout
+ * 设置客户端在加锁模式对指定key,加入超时时间*/
 void blockForKeys(client *c, robj **keys, int numkeys, mstime_t timeout, robj *target) {
     dictEntry *de;
     list *l;
@@ -624,11 +632,11 @@ void blockForKeys(client *c, robj **keys, int numkeys, mstime_t timeout, robj *t
     if (target != NULL) incrRefCount(target);
 
     for (j = 0; j < numkeys; j++) {
-        /* If the key already exists in the dict ignore it. */
+        /* If the key already exists in the dict ignore it.  如果key已经存在,忽略*/
         if (dictAdd(c->bpop.keys,keys[j],NULL) != DICT_OK) continue;
         incrRefCount(keys[j]);
 
-        /* And in the other "side", to map keys -> clients */
+        /* And in the other "side", to map keys -> clients 添加key到加锁key列表 */
         de = dictFind(c->db->blocking_keys,keys[j]);
         if (de == NULL) {
             int retval;
@@ -647,7 +655,8 @@ void blockForKeys(client *c, robj **keys, int numkeys, mstime_t timeout, robj *t
 }
 
 /* Unblock a client that's waiting in a blocking operation such as BLPOP.
- * You should never call this function directly, but unblockClient() instead. */
+ * You should never call this function directly, but unblockClient() instead.
+ * 解锁客户端 */
 void unblockClientWaitingData(client *c) {
     dictEntry *de;
     dictIterator *di;
@@ -655,21 +664,21 @@ void unblockClientWaitingData(client *c) {
 
     serverAssertWithInfo(c,NULL,dictSize(c->bpop.keys) != 0);
     di = dictGetIterator(c->bpop.keys);
-    /* The client may wait for multiple keys, so unblock it for every key. */
+    /* The client may wait for multiple keys, so unblock it for every key. 客户端在等待很多key,所有解锁每个key */
     while((de = dictNext(di)) != NULL) {
         robj *key = dictGetKey(de);
 
-        /* Remove this client from the list of clients waiting for this key. */
+        /* Remove this client from the list of clients waiting for this key. 从加锁key列表删除key*/
         l = dictFetchValue(c->db->blocking_keys,key);
         serverAssertWithInfo(c,key,l != NULL);
         listDelNode(l,listSearchKey(l,c));
-        /* If the list is empty we need to remove it to avoid wasting memory */
+        /* If the list is empty we need to remove it to avoid wasting memory  list为空,清除*/
         if (listLength(l) == 0)
             dictDelete(c->db->blocking_keys,key);
     }
     dictReleaseIterator(di);
 
-    /* Cleanup the client structure */
+    /* Cleanup the client structure  清除客户端标志*/
     dictEmpty(c->bpop.keys,NULL);
     if (c->bpop.target) {
         decrRefCount(c->bpop.target);
@@ -687,13 +696,13 @@ void unblockClientWaitingData(client *c) {
 void signalListAsReady(redisDb *db, robj *key) {
     readyList *rl;
 
-    /* No clients blocking for this key? No need to queue it. */
+    /* No clients blocking for this key? No need to queue it. key没有加锁,不需要入队*/
     if (dictFind(db->blocking_keys,key) == NULL) return;
 
-    /* Key was already signaled? No need to queue it again. */
+    /* Key was already signaled? No need to queue it again.  key已经在等待队列,不需要入队*/
     if (dictFind(db->ready_keys,key) != NULL) return;
 
-    /* Ok, we need to queue this key into server.ready_keys. */
+    /* Ok, we need to queue this key into server.ready_keys. key入队 */
     rl = zmalloc(sizeof(*rl));
     rl->key = key;
     rl->db = db;
@@ -702,7 +711,7 @@ void signalListAsReady(redisDb *db, robj *key) {
 
     /* We also add the key in the db->ready_keys dictionary in order
      * to avoid adding it multiple times into a list with a simple O(1)
-     * check. */
+     * check.  添加到db的key队列*/
     incrRefCount(key);
     serverAssert(dictAdd(db->ready_keys,key,NULL) == DICT_OK);
 }
@@ -725,7 +734,8 @@ void signalListAsReady(redisDb *db, robj *key) {
  * C_ERR is returned to signal the caller that the list POP operation
  * should be undone as the client was not served: This only happens for
  * BRPOPLPUSH that fails to push the value to the destination key as it is
- * of the wrong type. */
+ * of the wrong type.
+ * 客户端锁定在list上*/
 int serveClientBlockedOnList(client *receiver, robj *key, robj *dstkey, redisDb *db, robj *value, int where)
 {
     robj *argv[3];
@@ -785,7 +795,8 @@ int serveClientBlockedOnList(client *receiver, robj *key, robj *dstkey, redisDb 
  * the server.ready_keys list. This function will run the list and will
  * serve clients accordingly. Note that the function will iterate again and
  * again as a result of serving BRPOPLPUSH we can have new blocking clients
- * to serve because of the PUSH side of BRPOPLPUSH. */
+ * to serve because of the PUSH side of BRPOPLPUSH.
+ * 在每次MULTI/EXEC调用时锁住*/
 void handleClientsBlockedOnLists(void) {
     while(listLength(server.ready_keys) != 0) {
         list *l;
@@ -802,7 +813,8 @@ void handleClientsBlockedOnLists(void) {
             readyList *rl = ln->value;
 
             /* First of all remove this key from db->ready_keys so that
-             * we can safely call signalListAsReady() against this key. */
+             * we can safely call signalListAsReady() against this key.
+             * 从等待key删除指定key*/
             dictDelete(rl->db->ready_keys,rl->key);
 
             /* If the key exists and it's a list, serve blocked clients
