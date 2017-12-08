@@ -31,7 +31,7 @@
 #include <math.h> /* isnan(), isinf() */
 
 /*-----------------------------------------------------------------------------
- * String Commands
+ * String Commands  字符串命令
  *----------------------------------------------------------------------------*/
 
 static int checkStringLength(client *c, long long size) {
@@ -59,10 +59,10 @@ static int checkStringLength(client *c, long long size) {
  * If abort_reply is NULL, "$-1" is used. */
 
 #define OBJ_SET_NO_FLAGS 0
-#define OBJ_SET_NX (1<<0)     /* Set if key not exists. */
-#define OBJ_SET_XX (1<<1)     /* Set if key exists. */
-#define OBJ_SET_EX (1<<2)     /* Set if time in seconds is given */
-#define OBJ_SET_PX (1<<3)     /* Set if time in ms in given */
+#define OBJ_SET_NX (1<<0)     /* Set if key not exists.  key不存在*/
+#define OBJ_SET_XX (1<<1)     /* Set if key exists.  key存在*/
+#define OBJ_SET_EX (1<<2)     /* Set if time in seconds is given  时间已秒为单位 */
+#define OBJ_SET_PX (1<<3)     /* Set if time in ms in given  时间已毫秒为单位*/
 
 void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire, int unit, robj *ok_reply, robj *abort_reply) {
     long long milliseconds = 0; /* initialized to avoid any harmness warning */
@@ -92,7 +92,7 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
     addReply(c, ok_reply ? ok_reply : shared.ok);
 }
 
-/* SET key value [NX] [XX] [EX <seconds>] [PX <milliseconds>] */
+/* SET key value [NX] [XX] [EX <seconds>] [PX <milliseconds>] 设置key值 */
 void setCommand(client *c) {
     int j;
     robj *expire = NULL;
@@ -196,13 +196,13 @@ void setrangeCommand(client *c) {
 
     o = lookupKeyWrite(c->db,c->argv[1]);
     if (o == NULL) {
-        /* Return 0 when setting nothing on a non-existing string */
+        /* Return 0 when setting nothing on a non-existing string 返回0当设置在不存在的字符串时 */
         if (sdslen(value) == 0) {
             addReply(c,shared.czero);
             return;
         }
 
-        /* Return when the resulting string exceeds allowed size */
+        /* Return when the resulting string exceeds allowed size  当结果字符串超过允许大小时返回。 */
         if (checkStringLength(c,offset+sdslen(value)) != C_OK)
             return;
 
@@ -211,22 +211,22 @@ void setrangeCommand(client *c) {
     } else {
         size_t olen;
 
-        /* Key exists, check type */
+        /* Key exists, check type  key存在,检查类型*/
         if (checkType(c,o,OBJ_STRING))
             return;
 
-        /* Return existing string length when setting nothing */
+        /* Return existing string length when setting nothing 返回字符串长度 */
         olen = stringObjectLen(o);
         if (sdslen(value) == 0) {
             addReplyLongLong(c,olen);
             return;
         }
 
-        /* Return when the resulting string exceeds allowed size */
+        /* Return when the resulting string exceeds allowed size 当结果字符串超过允许大小时返回。 */
         if (checkStringLength(c,offset+sdslen(value)) != C_OK)
             return;
 
-        /* Create a copy when the object is shared or encoded. */
+        /* Create a copy when the object is shared or encoded.  创建一个复制的对象*/
         o = dbUnshareStringValue(c->db,c->argv[1],o);
     }
 
@@ -262,7 +262,7 @@ void getrangeCommand(client *c) {
         strlen = sdslen(str);
     }
 
-    /* Convert negative indexes */
+    /* Convert negative indexes  转换负值*/
     if (start < 0 && end < 0 && start > end) {
         addReply(c,shared.emptybulk);
         return;
@@ -308,7 +308,8 @@ void msetGenericCommand(client *c, int nx) {
         return;
     }
     /* Handle the NX flag. The MSETNX semantic is to return zero and don't
-     * set nothing at all if at least one already key exists. */
+     * set nothing at all if at least one already key exists.
+     * 处理NX标志*/
     if (nx) {
         for (j = 1; j < c->argc; j += 2) {
             if (lookupKeyWrite(c->db,c->argv[j]) != NULL) {
@@ -438,13 +439,13 @@ void appendCommand(client *c) {
 
     o = lookupKeyWrite(c->db,c->argv[1]);
     if (o == NULL) {
-        /* Create the key */
+        /* Create the key  创建key*/
         c->argv[2] = tryObjectEncoding(c->argv[2]);
         dbAdd(c->db,c->argv[1],c->argv[2]);
         incrRefCount(c->argv[2]);
         totlen = stringObjectLen(c->argv[2]);
     } else {
-        /* Key exists, check type */
+        /* Key exists, check type  key存在,检查类型*/
         if (checkType(c,o,OBJ_STRING))
             return;
 
