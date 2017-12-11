@@ -363,7 +363,8 @@ unsigned long zslDeleteRangeByLex(zskiplist *zsl, zlexrangespec *range, dict *di
 }
 
 /* Delete all the elements with rank between start and end from the skiplist.
- * Start and end are inclusive. Note that start and end need to be 1-based */
+ * Start and end are inclusive. Note that start and end need to be 1-based
+ * 删除一点分数范围的元素*/
 unsigned long zslDeleteRangeByRank(zskiplist *zsl, unsigned int start, unsigned int end, dict *dict) {
     zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
     unsigned long traversed = 0, removed = 0;
@@ -395,7 +396,8 @@ unsigned long zslDeleteRangeByRank(zskiplist *zsl, unsigned int start, unsigned 
 /* Find the rank for an element by both score and key.
  * Returns 0 when the element cannot be found, rank otherwise.
  * Note that the rank is 1-based due to the span of zsl->header to the
- * first element. */
+ * first element.
+ * 查找分数和key对应的元素 */
 unsigned long zslGetRank(zskiplist *zsl, double score, robj *o) {
     zskiplistNode *x;
     unsigned long rank = 0;
@@ -419,7 +421,8 @@ unsigned long zslGetRank(zskiplist *zsl, double score, robj *o) {
     return 0;
 }
 
-/* Finds an element by its rank. The rank argument needs to be 1-based. */
+/* Finds an element by its rank. The rank argument needs to be 1-based.
+ * 根据rank找到元素*/
 zskiplistNode* zslGetElementByRank(zskiplist *zsl, unsigned long rank) {
     zskiplistNode *x;
     unsigned long traversed = 0;
@@ -596,7 +599,7 @@ zskiplistNode *zslFirstInLexRange(zskiplist *zsl, zlexrangespec *range) {
     zskiplistNode *x;
     int i;
 
-    /* If everything is out of range, return early. */
+    /* If everything is out of range, return early. 范围过界,返回*/
     if (!zslIsInLexRange(zsl,range)) return NULL;
 
     x = zsl->header;
@@ -710,7 +713,8 @@ unsigned int zzlLength(unsigned char *zl) {
 }
 
 /* Move to next entry based on the values in eptr and sptr. Both are set to
- * NULL when there is no next entry. */
+ * NULL when there is no next entry.
+ * 移动到下一个entry*/
 void zzlNext(unsigned char *zl, unsigned char **eptr, unsigned char **sptr) {
     unsigned char *_eptr, *_sptr;
     serverAssert(*eptr != NULL && *sptr != NULL);
@@ -729,7 +733,8 @@ void zzlNext(unsigned char *zl, unsigned char **eptr, unsigned char **sptr) {
 }
 
 /* Move to the previous entry based on the values in eptr and sptr. Both are
- * set to NULL when there is no next entry. */
+ * set to NULL when there is no next entry.
+ * 移动到前一个entry*/
 void zzlPrev(unsigned char *zl, unsigned char **eptr, unsigned char **sptr) {
     unsigned char *_eptr, *_sptr;
     serverAssert(*eptr != NULL && *sptr != NULL);
@@ -748,7 +753,8 @@ void zzlPrev(unsigned char *zl, unsigned char **eptr, unsigned char **sptr) {
 }
 
 /* Returns if there is a part of the zset is in range. Should only be used
- * internally by zzlFirstInRange and zzlLastInRange. */
+ * internally by zzlFirstInRange and zzlLastInRange.
+ * 测试给定范围是否在zset里面 */
 int zzlIsInRange(unsigned char *zl, zrangespec *range) {
     unsigned char *p;
     double score;
@@ -985,7 +991,8 @@ unsigned char *zzlInsertAt(unsigned char *zl, unsigned char *eptr, robj *ele, do
 }
 
 /* Insert (element,score) pair in ziplist. This function assumes the element is
- * not yet present in the list. */
+ * not yet present in the list.
+ * 插入元素*/
 unsigned char *zzlInsert(unsigned char *zl, robj *ele, double score) {
     unsigned char *eptr = ziplistIndex(zl,0), *sptr;
     double s;

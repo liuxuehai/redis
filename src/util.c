@@ -43,7 +43,7 @@
 #include "util.h"
 #include "sha1.h"
 
-/* Glob-style pattern matching. */
+/* Glob-style pattern matching. 全局通用模式匹配*/
 int stringmatchlen(const char *pattern, int patternLen,
         const char *string, int stringLen, int nocase)
 {
@@ -176,7 +176,8 @@ int stringmatch(const char *pattern, const char *string, int nocase) {
  *
  * On parsing error, if *err is not NULL, it's set to 1, otherwise it's
  * set to 0. On error the function return value is 0, regardless of the
- * fact 'err' is NULL or not. */
+ * fact 'err' is NULL or not.
+ * 转换字符串描述的内存大小格式为数字格式 */
 long long memtoll(const char *p, int *err) {
     const char *u;
     char buf[128];
@@ -186,7 +187,7 @@ long long memtoll(const char *p, int *err) {
 
     if (err) *err = 0;
 
-    /* Search the first non digit character. */
+    /* Search the first non digit character. 查找第一个非数字字符串*/
     u = p;
     if (*u == '-') u++;
     while(*u && isdigit(*u)) u++;
@@ -273,7 +274,8 @@ uint32_t sdigits10(int64_t v) {
  * https://www.facebook.com/notes/facebook-engineering/three-optimization-tips-for-c/10151361643253920
  *
  * Modified in order to handle signed integers since the original code was
- * designed for unsigned integers. */
+ * designed for unsigned integers.
+ * 将数字转换为字符串*/
 int ll2string(char* dst, size_t dstlen, long long svalue) {
     static const char digits[201] =
         "0001020304050607080910111213141516171819"
@@ -285,7 +287,8 @@ int ll2string(char* dst, size_t dstlen, long long svalue) {
     unsigned long long value;
 
     /* The main loop works with 64bit unsigned integers for simplicity, so
-     * we convert the number here and remember if it is negative. */
+     * we convert the number here and remember if it is negative.
+     * */
     if (svalue < 0) {
         if (svalue != LLONG_MIN) {
             value = -svalue;
@@ -298,11 +301,11 @@ int ll2string(char* dst, size_t dstlen, long long svalue) {
         negative = 0;
     }
 
-    /* Check length. */
+    /* Check length. 检查长度 */
     uint32_t const length = digits10(value)+negative;
     if (length >= dstlen) return 0;
 
-    /* Null term. */
+    /* Null term.  非空*/
     uint32_t next = length;
     dst[next] = '\0';
     next--;
@@ -330,7 +333,8 @@ int ll2string(char* dst, size_t dstlen, long long svalue) {
 
 /* Convert a string into a long long. Returns 1 if the string could be parsed
  * into a (non-overflowing) long long, 0 otherwise. The value will be set to
- * the parsed value when appropriate. */
+ * the parsed value when appropriate.
+ * 将字符串转换为数字 */
 int string2ll(const char *s, size_t slen, long long *value) {
     const char *p = s;
     size_t plen = 0;
@@ -411,7 +415,8 @@ int string2l(const char *s, size_t slen, long *lval) {
 }
 
 /* Convert a double to a string representation. Returns the number of bytes
- * required. The representation should always be parsable by strtod(3). */
+ * required. The representation should always be parsable by strtod(3).
+ * 转换double为字符串显示 */
 int d2string(char *buf, size_t len, double value) {
     if (isnan(value)) {
         len = snprintf(buf,len,"nan");
@@ -532,7 +537,8 @@ void getRandomHexChars(char *p, unsigned int len) {
  *
  * The function does not try to normalize everything, but only the obvious
  * case of one or more "../" appearning at the start of "filename"
- * relative path. */
+ * relative path.
+ * 返回绝对地址 */
 sds getAbsolutePath(char *filename) {
     char cwd[1024];
     sds abspath;
