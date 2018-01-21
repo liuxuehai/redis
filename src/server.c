@@ -2669,9 +2669,10 @@ void authCommand(client *c) {
 }
 
 /* The PING command. It works in a different way if the client is in
- * in Pub/Sub mode. */
+ * in Pub/Sub mode.
+ * 如果是订阅模式,ping命令在不同模式下工作 */
 void pingCommand(client *c) {
-    /* The command takes zero or one arguments. */
+    /* The command takes zero or one arguments.  不能超过1个命令*/
     if (c->argc > 2) {
         addReplyErrorFormat(c,"wrong number of arguments for '%s' command",
             c->cmd->name);
@@ -2830,7 +2831,8 @@ void bytesToHuman(char *s, unsigned long long n) {
 
 /* Create the string returned by the INFO command. This is decoupled
  * by the INFO command itself as we need to report the same information
- * on memory corruption problems. */
+ * on memory corruption problems.
+ * 创建字符串返回给info命令, 这是由信息命令本身解耦的，因为我们需要报告关于内存损坏问题的相同信息。*/
 sds genRedisInfoString(char *section) {
     sds info = sdsempty();
     time_t uptime = server.unixtime-server.stat_starttime;

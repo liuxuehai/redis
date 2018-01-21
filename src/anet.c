@@ -63,7 +63,8 @@ int anetSetBlock(char *err, int fd, int non_block) {
 
     /* Set the socket blocking (if non_block is zero) or non-blocking.
      * Note that fcntl(2) for F_GETFL and F_SETFL can't be
-     * interrupted by a signal. */
+     * interrupted by a signal.
+     * 设置套接字阻塞（如果non_block为零）或非阻塞。注意，fcntl（2）为f_getfl和f_setfl不能被信号中断*/
     if ((flags = fcntl(fd, F_GETFL)) == -1) {
         anetSetError(err, "fcntl(F_GETFL): %s", strerror(errno));
         return ANET_ERR;
@@ -91,7 +92,10 @@ int anetBlock(char *err, int fd) {
 
 /* Set TCP keep alive option to detect dead peers. The interval option
  * is only used for Linux as we are using Linux-specific APIs to set
- * the probe send time, interval, and count. */
+ * the probe send time, interval, and count.
+ *
+ * 设置TCP保存选项来检测死节点
+ * 间隔选项仅用于Linux，因为我们使用Linux特定API来设置探测发送时间、间隔和计数。*/
 int anetKeepAlive(char *err, int fd, int interval)
 {
     int val = 1;
@@ -105,9 +109,11 @@ int anetKeepAlive(char *err, int fd, int interval)
 #ifdef __linux__
     /* Default settings are more or less garbage, with the keepalive time
      * set to 7200 by default on Linux. Modify settings to make the feature
-     * actually useful. */
+     * actually useful.
+     * 默认设置是更多或更少的垃圾，用默认设置为7200的存活时间在Linux上。修改设置以使该功能实际有用。*/
 
-    /* Send first probe after interval. */
+    /* Send first probe after interval.
+     * 间隔后发送第一个探针。 */
     val = interval;
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val)) < 0) {
         anetSetError(err, "setsockopt TCP_KEEPIDLE: %s\n", strerror(errno));
@@ -116,7 +122,9 @@ int anetKeepAlive(char *err, int fd, int interval)
 
     /* Send next probes after the specified interval. Note that we set the
      * delay as interval / 3, as we send three probes before detecting
-     * an error (see the next setsockopt call). */
+     * an error (see the next setsockopt call).
+     * 在指定的间隔之后发送下一个探测。请注意，我们设置延迟间隔/ 3，
+     * 我们送三探针检测错误之前（见下一setsockopt调用）。 */
     val = interval/3;
     if (val == 0) val = 1;
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val)) < 0) {
@@ -125,7 +133,8 @@ int anetKeepAlive(char *err, int fd, int interval)
     }
 
     /* Consider the socket in error state after three we send three ACK
-     * probes without getting a reply. */
+     * probes without getting a reply.
+     * 考虑套接字在错误状态后三，我们发送三个ACK探针没有得到答复。*/
     val = 3;
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val)) < 0) {
         anetSetError(err, "setsockopt TCP_KEEPCNT: %s\n", strerror(errno));
@@ -180,7 +189,9 @@ int anetTcpKeepAlive(char *err, int fd)
 }
 
 /* Set the socket send timeout (SO_SNDTIMEO socket option) to the specified
- * number of milliseconds, or disable it if the 'ms' argument is zero. */
+ * number of milliseconds, or disable it if the 'ms' argument is zero.
+ *
+ * 设置套接字发送超时（SO_SNDTIMEO套接字选项）为指定的毫秒数，或禁用它，如果'ms'的参数是零。 */
 int anetSendTimeout(char *err, int fd, long long ms) {
     struct timeval tv;
 
@@ -199,7 +210,12 @@ int anetSendTimeout(char *err, int fd, long long ms) {
  *
  * If flags is set to ANET_IP_ONLY the function only resolves hostnames
  * that are actually already IPv4 or IPv6 addresses. This turns the function
- * into a validating / normalizing function. */
+ * into a validating / normalizing function.
+ *
+ * anetGenericResolve()由anetResolve()和anetResolveIP()调用做实际工作
+ * 它解析了主机的“host”和设置IP地址的字符串表示形式写入缓冲区，指出“ipbuf”
+ * 如果标志被设置为ANET_IP_ONLY功能解决了主机名，实际已IPv4或IPv6地址
+ * 这将函数转换为验证/标准化函数。*/
 int anetGenericResolve(char *err, char *host, char *ipbuf, size_t ipbuf_len,
                        int flags)
 {
@@ -209,7 +225,7 @@ int anetGenericResolve(char *err, char *host, char *ipbuf, size_t ipbuf_len,
     memset(&hints,0,sizeof(hints));
     if (flags & ANET_IP_ONLY) hints.ai_flags = AI_NUMERICHOST;
     hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;  /* specify socktype to avoid dups */
+    hints.ai_socktype = SOCK_STREAM;  /* specify socktype to avoid dups 指定socktype避免DUPS */
 
     if ((rv = getaddrinfo(host, NULL, &hints, &info)) != 0) {
         anetSetError(err, "%s", gai_strerror(rv));
@@ -238,7 +254,8 @@ int anetResolveIP(char *err, char *host, char *ipbuf, size_t ipbuf_len) {
 static int anetSetReuseAddr(char *err, int fd) {
     int yes = 1;
     /* Make sure connection-intensive things like the redis benckmark
-     * will be able to close/open sockets a zillion of times */
+     * will be able to close/open sockets a zillion of times
+     * 确保像Redis标准问题连接密集的事物才能关闭/打开无数次*/
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
         anetSetError(err, "setsockopt SO_REUSEADDR: %s", strerror(errno));
         return ANET_ERR;
@@ -254,7 +271,8 @@ static int anetCreateSocket(char *err, int domain) {
     }
 
     /* Make sure connection-intensive things like the redis benchmark
-     * will be able to close/open sockets a zillion of times */
+     * will be able to close/open sockets a zillion of times
+     * 确保像Redis基准连接密集的东西就可以关闭/打开无数次 */
     if (anetSetReuseAddr(err,s) == ANET_ERR) {
         close(s);
         return ANET_ERR;
@@ -264,7 +282,7 @@ static int anetCreateSocket(char *err, int domain) {
 
 #define ANET_CONNECT_NONE 0
 #define ANET_CONNECT_NONBLOCK 1
-#define ANET_CONNECT_BE_BINDING 2 /* Best effort binding. */
+#define ANET_CONNECT_BE_BINDING 2 /* Best effort binding. 最努力的结合 */
 static int anetTcpGenericConnect(char *err, char *addr, int port,
                                  char *source_addr, int flags)
 {
@@ -284,7 +302,8 @@ static int anetTcpGenericConnect(char *err, char *addr, int port,
     for (p = servinfo; p != NULL; p = p->ai_next) {
         /* Try to create the socket and to connect it.
          * If we fail in the socket() call, or on connect(), we retry with
-         * the next entry in servinfo. */
+         * the next entry in servinfo.
+         * 尝试创建套接字和连接它。如果我们在socket()调用失败，或connect()，我们在进入下一servinfo重试*/
         if ((s = socket(p->ai_family,p->ai_socktype,p->ai_protocol)) == -1)
             continue;
         if (anetSetReuseAddr(err,s) == ANET_ERR) goto error;
@@ -292,7 +311,8 @@ static int anetTcpGenericConnect(char *err, char *addr, int port,
             goto error;
         if (source_addr) {
             int bound = 0;
-            /* Using getaddrinfo saves us from self-determining IPv4 vs IPv6 */
+            /* Using getaddrinfo saves us from self-determining IPv4 vs IPv6
+             * 利用信息把我们从自我决定的IPv4与IPv6*/
             if ((rv = getaddrinfo(source_addr, NULL, &hints, &bservinfo)) != 0)
             {
                 anetSetError(err, "%s", gai_strerror(rv));
@@ -312,7 +332,8 @@ static int anetTcpGenericConnect(char *err, char *addr, int port,
         }
         if (connect(s,p->ai_addr,p->ai_addrlen) == -1) {
             /* If the socket is non-blocking, it is ok for connect() to
-             * return an EINPROGRESS error here. */
+             * return an EINPROGRESS error here.
+             * 如果socket是非阻塞的，这是connect()这里返回一个EINPROGRESS误差*/
             if (errno == EINPROGRESS && flags & ANET_CONNECT_NONBLOCK)
                 goto end;
             close(s);
@@ -321,7 +342,8 @@ static int anetTcpGenericConnect(char *err, char *addr, int port,
         }
 
         /* If we ended an iteration of the for loop without errors, we
-         * have a connected socket. Let's return to the caller. */
+         * have a connected socket. Let's return to the caller.
+         * 如果我们没有错误地结束for循环的迭代，那么我们就有一个连接的套接字。让我们回到打电话的人那里去。 */
         goto end;
     }
     if (p == NULL)

@@ -77,7 +77,8 @@ aeEventLoop *aeCreateEventLoop(int setsize) {
     eventLoop->beforesleep = NULL;
     if (aeApiCreate(eventLoop) == -1) goto err;
     /* Events with mask == AE_NONE are not set. So let's initialize the
-     * vector with it. */
+     * vector with it.
+     * 初始化 Events的mask为AE_NONE*/
     for (i = 0; i < setsize; i++)
         eventLoop->events[i].mask = AE_NONE;
     return eventLoop;
@@ -91,7 +92,8 @@ err:
     return NULL;
 }
 
-/* Return the current set size. */
+/* Return the current set size.
+ * 返回当前的设置值*/
 int aeGetSetSize(aeEventLoop *eventLoop) {
     return eventLoop->setsize;
 }
@@ -102,20 +104,27 @@ int aeGetSetSize(aeEventLoop *eventLoop) {
  * set size minus one, AE_ERR is returned and the operation is not
  * performed at all.
  *
- * Otherwise AE_OK is returned and the operation is successful. */
+ * Otherwise AE_OK is returned and the operation is successful.
+ *
+ * 调整事件循环的为最大设置大小。如果请求的设置大小小于当前集合的大小，
+ * 但已经有使用的是> =请求的大小减去一个文件描述符，ae_err返回操作不执行所有。
+ *
+ * 否则ae_ok返回操作成功。
+ * */
 int aeResizeSetSize(aeEventLoop *eventLoop, int setsize) {
     int i;
 
     if (setsize == eventLoop->setsize) return AE_OK;
     if (eventLoop->maxfd >= setsize) return AE_ERR;
-    if (aeApiResize(eventLoop,setsize) == -1) return AE_ERR;
+    if (aeApiResize(eventLoop,setsize) == -1) return AE_ERR;//分配失败返回失败
 
     eventLoop->events = zrealloc(eventLoop->events,sizeof(aeFileEvent)*setsize);
     eventLoop->fired = zrealloc(eventLoop->fired,sizeof(aeFiredEvent)*setsize);
     eventLoop->setsize = setsize;
 
     /* Make sure that if we created new slots, they are initialized with
-     * an AE_NONE mask. */
+     * an AE_NONE mask.
+     * 确保如果我们创建的新的slot,就初始化mask为AE_NONE*/
     for (i = eventLoop->maxfd+1; i < setsize; i++)
         eventLoop->events[i].mask = AE_NONE;
     return AE_OK;
@@ -132,6 +141,7 @@ void aeStop(aeEventLoop *eventLoop) {
     eventLoop->stop = 1;
 }
 
+/*文件事件*/
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
         aeFileProc *proc, void *clientData)
 {
@@ -258,7 +268,8 @@ static aeTimeEvent *aeSearchNearestTimer(aeEventLoop *eventLoop)
     return nearest;
 }
 
-/* Process time events */
+/* Process time events
+ * 处理时间事件*/
 static int processTimeEvents(aeEventLoop *eventLoop) {
     int processed = 0;
     aeTimeEvent *te, *prev;
@@ -272,7 +283,13 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
      * Here we try to detect system clock skews, and force all the time
      * events to be processed ASAP when this happens: the idea is that
      * processing events earlier is less dangerous than delaying them
-     * indefinitely, and practice suggests it is. */
+     * indefinitely, and practice suggests it is.
+     *
+     * 如果系统时钟被移动到未来，然后返回到正确的值，
+     * 则时间事件可以以随机方式延迟。通常这意味着预定的操作不会很快执行。
+     * 在这里，我们试图检测系统时钟脉冲相位差，并迫使所有的时间事件进行处理，尽快当这一切发生的时候
+     * 其想法是，更早地处理事件比无限期地推迟事件更危险，实践表明它是。
+     * */
     if (now < eventLoop->lastTime) {
         te = eventLoop->timeEventHead;
         while(te) {
@@ -289,7 +306,8 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
         long now_sec, now_ms;
         long long id;
 
-        /* Remove events scheduled for deletion. */
+        /* Remove events scheduled for deletion.
+         * 删除计划删除的事件。*/
         if (te->id == AE_DELETED_EVENT_ID) {
             aeTimeEvent *next = te->next;
             if (prev == NULL)
@@ -307,7 +325,10 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
          * this iteration. Note that this check is currently useless: we always
          * add new timers on the head, however if we change the implementation
          * detail, this check may be useful again: we keep it here for future
-         * defense. */
+         * defense.
+         * 确保我们不处理在这个迭代中由时间事件创建的时间事件
+         * 注意，这个检查现在是无用的：我们总是在头上添加新的计时器，
+         * 但是如果我们改变实现细节，这个检查可能会有用：我们将它保存在这里以备将来的防御。*/
         if (te->id > maxId) {
             te = te->next;
             continue;
@@ -345,18 +366,22 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
  * if flags has AE_DONT_WAIT set the function returns ASAP until all
  * the events that's possible to process without to wait are processed.
  *
- * The function returns the number of events processed. */
+ * The function returns the number of events processed.
+ * 等待时间过程的每一个事件，每一个挂起的文件事件（可能由时间事件回调只是处理注册）。
+ * 如果没有特殊标志，函数将一直处于睡眠状态，直到某些文件事件触发，或者下一次事件发生（如果有的话）。 */
 int aeProcessEvents(aeEventLoop *eventLoop, int flags)
 {
     int processed = 0, numevents;
 
-    /* Nothing to do? return ASAP */
+    /* Nothing to do? return ASAP 没什么事吗？尽快返回*/
     if (!(flags & AE_TIME_EVENTS) && !(flags & AE_FILE_EVENTS)) return 0;
 
     /* Note that we want call select() even if there are no
      * file events to process as long as we want to process time
      * events, in order to sleep until the next time event is ready
-     * to fire. */
+     * to fire.
+     * 请注意，我们要打电话给select()即使没有文件事件过程，
+     * 只要我们想过程时间事件，为了到下一次活动准备发起。*/
     if (eventLoop->maxfd != -1 ||
         ((flags & AE_TIME_EVENTS) && !(flags & AE_DONT_WAIT))) {
         int j;
@@ -372,7 +397,8 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
             tvp = &tv;
 
             /* How many milliseconds we need to wait for the next
-             * time event to fire? */
+             * time event to fire?
+             * 我们需要等待下一次事件触发的毫秒数*/
             long long ms =
                 (shortest->when_sec - now_sec)*1000 +
                 shortest->when_ms - now_ms;
@@ -418,7 +444,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
             processed++;
         }
     }
-    /* Check time events */
+    /* Check time events 检查时间事件 */
     if (flags & AE_TIME_EVENTS)
         processed += processTimeEvents(eventLoop);
 
@@ -426,7 +452,8 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
 }
 
 /* Wait for milliseconds until the given file descriptor becomes
- * writable/readable/exception */
+ * writable/readable/exception
+ * 等待毫秒，直到给定的文件描述符变成可写/可读/异常。*/
 int aeWait(int fd, int mask, long long milliseconds) {
     struct pollfd pfd;
     int retmask = 0, retval;

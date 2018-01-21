@@ -588,7 +588,8 @@ void addReplyBulkCBuffer(client *c, const void *p, size_t len) {
     addReply(c,shared.crlf);
 }
 
-/* Add sds to reply (takes ownership of sds and frees it) */
+/* Add sds to reply (takes ownership of sds and frees it)
+ * 添加sds到回复,获取sds的管理权,和释放他*/
 void addReplyBulkSds(client *c, sds s)  {
     addReplySds(c,sdscatfmt(sdsempty(),"$%u\r\n",
         (unsigned long)sdslen(s)));

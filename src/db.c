@@ -404,7 +404,7 @@ void delCommand(client *c) {
 }
 
 /* EXISTS key1 key2 ... key_N.
- * Return value is the number of keys existing. */
+ * Return value is the number of keys existing.  key存在的数量*/
 void existsCommand(client *c) {
     long long count = 0;
     int j;

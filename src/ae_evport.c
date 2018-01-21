@@ -63,22 +63,23 @@ static int evport_debug = 0;
  * and only until we enter aeApiPoll again (at which point we restore the
  * in-kernel association).
  */
-#define MAX_EVENT_BATCHSZ 512
+#define MAX_EVENT_BATCHSZ 512   /* 最大事件批次大小 */
 
 typedef struct aeApiState {
-    int     portfd;                             /* event port */
-    int     npending;                           /* # of pending fds */
-    int     pending_fds[MAX_EVENT_BATCHSZ];     /* pending fds */
-    int     pending_masks[MAX_EVENT_BATCHSZ];   /* pending fds' masks */
+    int     portfd;                             /* event port  事件端口*/
+    int     npending;                           /* # of pending fds  #未决FDS*/
+    int     pending_fds[MAX_EVENT_BATCHSZ];     /* pending fds  在FDS*/
+    int     pending_masks[MAX_EVENT_BATCHSZ];   /* pending fds' masks  在FDS masks*/
 } aeApiState;
 
+/*aeApi 创建*/
 static int aeApiCreate(aeEventLoop *eventLoop) {
     int i;
     aeApiState *state = zmalloc(sizeof(aeApiState));
-    if (!state) return -1;
+    if (!state) return -1; /* 创建不成功,返回-1*/
 
-    state->portfd = port_create();
-    if (state->portfd == -1) {
+    state->portfd = port_create(); /*创建事件端口*/
+    if (state->portfd == -1) { /* 创建不成功,释放资源,返回-1*/
         zfree(state);
         return -1;
     }
@@ -94,18 +95,21 @@ static int aeApiCreate(aeEventLoop *eventLoop) {
     return 0;
 }
 
+/*aeApi 重新size */
 static int aeApiResize(aeEventLoop *eventLoop, int setsize) {
     /* Nothing to resize here. */
     return 0;
 }
 
+/* 释放资源*/
 static void aeApiFree(aeEventLoop *eventLoop) {
     aeApiState *state = eventLoop->apidata;
 
-    close(state->portfd);
+    close(state->portfd);/*关闭事件端口*/
     zfree(state);
 }
 
+/*aeApi 查找*/
 static int aeApiLookupPending(aeApiState *state, int fd) {
     int i;
 
@@ -119,6 +123,8 @@ static int aeApiLookupPending(aeApiState *state, int fd) {
 
 /*
  * Helper function to invoke port_associate for the given fd and mask.
+ *
+ * 调用给定的FD和面具port_associate辅助功能。
  */
 static int aeApiAssociate(const char *where, int portfd, int fd, int mask) {
     int events = 0;
@@ -133,7 +139,7 @@ static int aeApiAssociate(const char *where, int portfd, int fd, int mask) {
         fprintf(stderr, "%s: port_associate(%d, 0x%x) = ", where, fd, events);
 
     rv = port_associate(portfd, PORT_SOURCE_FD, fd, events,
-        (void *)(uintptr_t)mask);
+        (void *)(uintptr_t)mask);/*port_associate*/
     err = errno;
 
     if (evport_debug)
@@ -149,6 +155,7 @@ static int aeApiAssociate(const char *where, int portfd, int fd, int mask) {
     return rv;
 }
 
+/* aeApi添加事件*/
 static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
     aeApiState *state = eventLoop->apidata;
     int fullmask, pfd;
@@ -160,6 +167,9 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
      * Since port_associate's "events" argument replaces any existing events, we
      * must be sure to include whatever events are already associated when
      * we call port_associate() again.
+     *
+     * 因为port_associate的"events"参数取代任何现有的事件，
+     * 我们必须确保包括任何事件已经与我们称port_associate()再次。
      */
     fullmask = mask | eventLoop->events[fd].mask;
     pfd = aeApiLookupPending(state, fd);
@@ -170,6 +180,9 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
          * assume that the consumer has processed that poll event, but we play
          * it safer by simply updating pending_mask.  The fd will be
          * re-associated as usual when aeApiPoll is called again.
+         *
+         * 这FD是刚从aeapipoll 。它应该是假设消费者进行了调查活动的安全，
+         * 但我们玩它，只需更新pending_mask更安全,FD将重新关联一样当aeapipoll又称为
          */
         if (evport_debug)
             fprintf(stderr, "aeApiAddEvent: adding to pending fd %d\n", fd);
@@ -180,6 +193,7 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
     return (aeApiAssociate("aeApiAddEvent", state->portfd, fd, fullmask));
 }
 
+/*aeApi 删除事件*/
 static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
     aeApiState *state = eventLoop->apidata;
     int fullmask, pfd;
@@ -197,6 +211,9 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
          * This fd was just returned from aeApiPoll, so it's not currently
          * associated with the port.  All we need to do is update
          * pending_mask appropriately.
+         *
+         * 这FD是刚从aeApiPoll ，所以它不是目前与端口相关的。
+         * 所有我们需要做的是更新pending_mask适当
          */
         state->pending_masks[pfd] &= ~mask;
 
@@ -212,6 +229,10 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
      * updating that association.  We don't have a good way of knowing what the
      * events are without looking into the eventLoop state directly.  We rely on
      * the fact that our caller has already updated the mask in the eventLoop.
+     *
+     * FD当前与端口关联。与上面的添加案例一样，在更新该关联之前，我们必须先查看文件描述符的完整掩码。
+     * 我们没有一个好的办法知道有哪些事件是没有寻找到eventLoop状态直接。
+     * 我们依赖于这样的事实：我们的人已经在eventLoop更新掩码。
      */
 
     fullmask = eventLoop->events[fd].mask;
@@ -219,6 +240,8 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
         /*
          * We're removing *all* events, so use port_dissociate to remove the
          * association completely.  Failure here indicates a bug.
+         *
+         * 我们将删除所有的事件，所以用port_dissociate完全删除的关联。
          */
         if (evport_debug)
             fprintf(stderr, "aeApiDelEvent: port_dissociate(%d)\n", fd);
@@ -235,11 +258,16 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
          * we've reached an resource limit, for which it doesn't make sense to
          * retry (counter-intuitively).  All other errors indicate a bug.  In any
          * of these cases, the best we can do is to abort.
+         *
+         * ENOMEM 是一种潜在的瞬态工况，但内核通常不会返回它除非事情真的很糟糕
+         * EAGAIN表明我们已经达到了一个资源的限制，意味着重试没有意义（反直觉）。
+         * 所有其他错误都表明有缺陷。在任何这些情况下，我们能做的最好的事情就是中止。
          */
         abort(); /* will not return */
     }
 }
 
+/* aeApi Poll*/
 static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
     aeApiState *state = eventLoop->apidata;
     struct timespec timeout, *tsp;
@@ -251,10 +279,13 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
      * If we've returned fd events before, we must re-associate them with the
      * port now, before calling port_get().  See the block comment at the top of
      * this file for an explanation of why.
+     *
+     * 如果我们回到FD事件之前，我们必须再关联到端口，在调用port_get()之前
+     * 请查看此文件顶部的块注释以解释其原因。
      */
     for (i = 0; i < state->npending; i++) {
         if (state->pending_fds[i] == -1)
-            /* This fd has since been deleted. */
+            /* This fd has since been deleted. 此FD已被删除。*/
             continue;
 
         if (aeApiAssociate("aeApiPoll", state->portfd,
@@ -280,6 +311,8 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
     /*
      * port_getn can return with errno == ETIME having returned some events (!).
      * So if we get ETIME, we check nevents, too.
+     *
+     * port_getn可以返回errno = =时间了一些events（！）所以如果我们ETIME，我们检查nevents
      */
     nevents = 1;
     if (port_getn(state->portfd, event, MAX_EVENT_BATCHSZ, &nevents,

@@ -45,7 +45,8 @@ static int aeApiCreate(aeEventLoop *eventLoop) {
         zfree(state);
         return -1;
     }
-    state->epfd = epoll_create(1024); /* 1024 is just a hint for the kernel */
+    state->epfd = epoll_create(1024); /* 1024 is just a hint for the kernel
+    1024只是内核的提示*/
     if (state->epfd == -1) {
         zfree(state->events);
         zfree(state);
@@ -70,16 +71,18 @@ static void aeApiFree(aeEventLoop *eventLoop) {
     zfree(state);
 }
 
+/*ae添加事件*/
 static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
     aeApiState *state = eventLoop->apidata;
-    struct epoll_event ee = {0}; /* avoid valgrind warning */
+    struct epoll_event ee = {0}; /* avoid valgrind warning  避免valgrind的警告*/
     /* If the fd was already monitored for some event, we need a MOD
-     * operation. Otherwise we need an ADD operation. */
+     * operation. Otherwise we need an ADD operation.
+     * 如果FD已经监视了某个事件，我们需要一个mod操作。否则我们需要添加操作。 */
     int op = eventLoop->events[fd].mask == AE_NONE ?
             EPOLL_CTL_ADD : EPOLL_CTL_MOD;
 
     ee.events = 0;
-    mask |= eventLoop->events[fd].mask; /* Merge old events */
+    mask |= eventLoop->events[fd].mask; /* Merge old events  合并旧的事件*/
     if (mask & AE_READABLE) ee.events |= EPOLLIN;
     if (mask & AE_WRITABLE) ee.events |= EPOLLOUT;
     ee.data.fd = fd;
@@ -87,9 +90,10 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
     return 0;
 }
 
+/*ae删除事件*/
 static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
     aeApiState *state = eventLoop->apidata;
-    struct epoll_event ee = {0}; /* avoid valgrind warning */
+    struct epoll_event ee = {0}; /* avoid valgrind warning  避免valgrind的警告*/
     int mask = eventLoop->events[fd].mask & (~delmask);
 
     ee.events = 0;
@@ -100,11 +104,13 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
         epoll_ctl(state->epfd,EPOLL_CTL_MOD,fd,&ee);
     } else {
         /* Note, Kernel < 2.6.9 requires a non null event pointer even for
-         * EPOLL_CTL_DEL. */
+         * EPOLL_CTL_DEL.
+         * 注释,Kernel < 2.6.9u需要一个非空的事件指针为EPOLL_CTL_DEL*/
         epoll_ctl(state->epfd,EPOLL_CTL_DEL,fd,&ee);
     }
 }
 
+/*ae poll事件*/
 static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
     aeApiState *state = eventLoop->apidata;
     int retval, numevents = 0;

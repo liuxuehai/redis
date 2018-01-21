@@ -338,7 +338,11 @@ listNode *listSearchKey(list *list, void *key)
  * where 0 is the head, 1 is the element next to head
  * and so on. Negative integers are used in order to count
  * from the tail, -1 is the last element, -2 the penultimate
- * and so on. If the index is out of range NULL is returned. */
+ * and so on. If the index is out of range NULL is returned.
+ *
+ * 在指定的基于零的索引中返回元素，其中0是头部，1是头部旁边的元素，等等。
+ * 负整数是用来计算从尾部，- 1是最后一个元素，- 2倒数第二等。
+ * 如果索引超出范围，则返回null。*/
 listNode *listIndex(list *list, long index) {
     listNode *n;
 
@@ -353,16 +357,17 @@ listNode *listIndex(list *list, long index) {
     return n;
 }
 
-/* Rotate the list removing the tail node and inserting it to the head. */
+/* Rotate the list removing the tail node and inserting it to the head.
+ * 旋转列表，删除尾部节点并将其插入头部。*/
 void listRotate(list *list) {
     listNode *tail = list->tail;
 
     if (listLength(list) <= 1) return;
 
-    /* Detach current tail */
+    /* Detach current tail  分离当前尾*/
     list->tail = tail->prev;
     list->tail->next = NULL;
-    /* Move it as head */
+    /* Move it as head  作为头移动它*/
     list->head->prev = tail;
     tail->prev = NULL;
     tail->next = list->head;
